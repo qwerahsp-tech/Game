@@ -97,14 +97,12 @@
   </div>
 </div>
 
-<script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
-</script>
 <script type="module">
-import * as THREE from 'three';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
 const $ = id => document.getElementById(id);
 const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x9ecbff, 60, 280);
 const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 600);
 const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setSize(innerWidth, innerHeight);
