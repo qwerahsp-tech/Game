@@ -91,7 +91,7 @@
       <button class="mbtn sec" id="btnContinue" style="display:none">⏵ Продолжить</button>
     </div>
     <div id="controls">
-      <b>WASD</b> — ходьба · <b>Shift</b> — бег · <b>мышь (зажать)</b> — камера · <b>колесо</b> — зум<br>
+      Вид от первого лица · <b>WASD</b> — ходьба · <b>мышь (зажать)</b> — осмотреться · <b>Shift</b> — бег<br>
       <b>E / Пробел</b> — действие, диалог, продолжение · <b>E</b> на лавочке — ускорить время
     </div>
   </div>
@@ -137,7 +137,7 @@ let triggers = [];
 let dialog = null;
 let minigame = null;
 let objective = null;
-let camYaw = Math.PI, camPitch = 0.5, camDist = 8;
+let camYaw = Math.PI, camPitch = 0.18, camDist = 8;
 let dragging = false;
 
 function save() {
@@ -382,6 +382,7 @@ function makePerson(shirt, pants, hair, skin) {
 const player = makePerson(0x3a6ac9, 0x2a3a55, 0x3a2a1a, 0xf0c8a0);
 scene.add(player);
 player.position.set(-40, 0, 20);
+player.visible = false;
 
 const umb = new THREE.Mesh(new THREE.ConeGeometry(1.4,0.6,10), new THREE.MeshLambertMaterial({ color:0xd94f6e }));
 umb.position.y = 2.55; umb.visible = false;
@@ -568,7 +569,7 @@ addEventListener('mouseup', () => dragging = false);
 addEventListener('mousemove', e => {
   if (!dragging) return;
   camYaw -= e.movementX * 0.005;
-  camPitch = Math.max(0.12, Math.min(1.2, camPitch + e.movementY * 0.004));
+  camPitch = Math.max(-0.6, Math.min(1.05, camPitch + e.movementY * 0.004));
 });
 addEventListener('wheel', e => { camDist = Math.max(4, Math.min(15, camDist + e.deltaY * 0.01)); });
 
@@ -605,7 +606,7 @@ if (isTouch) {
   renderer.domElement.addEventListener('touchmove', e => {
     for (const t of e.changedTouches) if (t.identifier === camTouch) {
       camYaw -= (t.clientX - camX) * 0.006;
-      camPitch = Math.max(0.12, Math.min(1.2, camPitch + (t.clientY - camY) * 0.005));
+      camPitch = Math.max(-0.6, Math.min(1.05, camPitch + (t.clientY - camY) * 0.005));
       camX = t.clientX; camY = t.clientY;
     }
   }, { passive:true });
@@ -1367,11 +1368,14 @@ function skyUpdate() {
 }
 const clock = new THREE.Clock();
 function updateCamera(dt) {
-  const cx = player.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist;
-  const cz = player.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
-  const cy = player.position.y + 2.4 + Math.sin(camPitch) * camDist;
-  camera.position.lerp(new THREE.Vector3(cx, cy, cz), dt === 0 ? 1 : 0.15);
-  camera.lookAt(player.position.x, player.position.y + 1.6, player.position.z);
+  const eyeY = player.position.y + 1.65;
+  camera.position.set(player.position.x, eyeY, player.position.z);
+  const cp = Math.cos(camPitch);
+  camera.lookAt(
+    player.position.x - Math.sin(camYaw) * cp * 4,
+    eyeY - Math.sin(camPitch) * 4,
+    player.position.z - Math.cos(camYaw) * cp * 4
+  );
 }
 function animate() {
   requestAnimationFrame(animate);
@@ -1396,24 +1400,37 @@ function animate() {
       if (Math.abs(joy.x) > 0.25 || Math.abs(joy.y) > 0.25) { mx += joy.x; mz += joy.y; }
       if (mx || mz) {
         const sp = ((keys['ShiftLeft'] || keys['ShiftRight'] || isTouch && (Math.hypot(mx, mz) > 0.85)) ? 9 : 4.5) * dt;
-        const a = camYaw + Math.PI;
-        const dx = (Math.cos(a) * mz + Math.sin(a) * -mx) * sp;
-        const dz = (Math.sin(a) * mz + Math.cos(a) * mx) * sp;
+        const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
+        const rx = -fz, rz = fx;
+        let dx = fx * -mz + rx * mx;
+        let dz = fz * -mz + rz * mx;
+        const len = Math.hypot(dx, dz) || 1;
+        dx = dx / len * sp; dz = dz / len * sp;
+        const R = 0.45;
         const cols = colliders[state.zone];
-        let nx = player.position.x + dx;
-        for (const c of cols) {
-          if (Math.abs(nx - c.x) < c.hx + 0.45 && Math.abs(player.position.z - c.z) < c.hz + 0.45) {
-            nx = c.x + Math.sign(nx - c.x) * (c.hx + 0.45);
+        const steps = Math.max(1, Math.ceil(sp / 0.3));
+        for (let s = 0; s < steps; s++) {
+          let nx = player.position.x + dx / steps;
+          let nz = player.position.z + dz / steps;
+          for (const c of cols) {
+            const cx2 = Math.max(c.x - c.hx, Math.min(c.x + c.hx, nx));
+            const cz2 = Math.max(c.z - c.hz, Math.min(c.z + c.hz, nz));
+            const ddx = nx - cx2, ddz = nz - cz2;
+            const d2 = ddx*ddx + ddz*ddz;
+            if (d2 < R*R) {
+              if (d2 > 1e-9) {
+                const d = Math.sqrt(d2);
+                nx = cx2 + ddx / d * R; nz = cz2 + ddz / d * R;
+              } else {
+                const px2 = (c.hx + R) - Math.abs(nx - c.x);
+                const pz2 = (c.hz + R) - Math.abs(nz - c.z);
+                if (px2 < pz2) nx = c.x + (Math.sign(nx - c.x) || 1) * (c.hx + R);
+                else nz = c.z + (Math.sign(nz - c.z) || 1) * (c.hz + R);
+              }
+            }
           }
+          player.position.x = nx; player.position.z = nz;
         }
-        player.position.x = nx;
-        let nz = player.position.z + dz;
-        for (const c of cols) {
-          if (Math.abs(player.position.x - c.x) < c.hx + 0.45 && Math.abs(nz - c.z) < c.hz + 0.45) {
-            nz = c.z + Math.sign(nz - c.z) * (c.hz + 0.45);
-          }
-        }
-        player.position.z = nz;
         player.rotation.y = Math.atan2(dx, dz);
         const legs = player.userData.legs;
         if (legs) { legs[0].rotation.x = Math.sin(clock.elapsedTime * 8) * 0.7; legs[1].rotation.x = -Math.sin(clock.elapsedTime * 8) * 0.7; }
@@ -1514,7 +1531,7 @@ function startNew() {
     say('Артём (мысли)', 'Это глупо звучит. Мы в одном классе. Просто раньше я жил у бабушки, в другом районе. А теперь — рядом.'),
     say('Артём (мысли)', 'У меня есть неделя. Неделя до фестиваля, неделя до признания. Или ещё одна неделя тишины на весь год.'),
     say('Мама', 'Артём! Хватит витать в облаках. В школу не опаздывай!'),
-    ...(isTouch ? [ say('', 'Управление: джойстик слева — ходьба, круглая кнопка ✋ справа — действие. Жёлтый столб света подскажет, куда идти.') ] : []),
+    ...(isTouch ? [ say('', 'Управление: джойстик слева — ходьба, свайп по экрану — осмотреться, круглая кнопка ✋ справа — действие. Жёлтый столб света подскажет, куда идти.') ] : []),
     { do: () => dayScripts[1]() },
   ]);
 }
