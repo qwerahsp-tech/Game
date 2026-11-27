@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7 дней до признания — 3D игра</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#0a0a12; font-family:'Segoe UI', Arial, sans-serif; }
+  canvas { display:block; }
+  #ui { position:fixed; inset:0; pointer-events:none; user-select:none; }
+  #hud { position:absolute; top:12px; left:12px; color:#fff; text-shadow:0 2px 4px #000; font-size:15px; line-height:1.5; }
+  #hud .row { background:rgba(10,10,25,.55); border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:6px 12px; margin-bottom:6px; }
+  #hearts .full { color:#ff5f7a; letter-spacing:2px; }
+  #hearts .empty { color:#5a3a44; letter-spacing:2px; }
+  #objective { position:absolute; top:12px; left:50%; transform:translateX(-50%); max-width:56%; text-align:center; color:#ffe9a8; text-shadow:0 2px 6px #000; font-size:16px; background:rgba(10,10,25,.55); border:1px solid rgba(255,220,120,.35); border-radius:10px; padding:8px 16px; }
+  #dist { color:#9fd8ff; font-size:13px; margin-top:2px; }
+  #prompt { position:absolute; bottom:130px; left:50%; transform:translateX(-50%); color:#fff; background:rgba(10,10,25,.7); border:1px solid rgba(255,255,255,.25); padding:8px 18px; border-radius:24px; font-size:16px; display:none; text-shadow:0 1px 3px #000; }
+  #prompt b { color:#ffd75f; }
+  #dialog { position:absolute; left:50%; bottom:20px; transform:translateX(-50%); width:min(760px, 92vw); display:none; pointer-events:auto; }
+  #dlgBox { background:rgba(12,12,28,.92); border:2px solid rgba(255,255,255,.25); border-radius:14px; padding:16px 20px 14px; color:#fff; box-shadow:0 8px 30px rgba(0,0,0,.6); }
+  #dlgWho { font-weight:700; color:#8fd0ff; margin-bottom:6px; font-size:15px; }
+  #dlgText { font-size:17px; line-height:1.55; min-height:52px; }
+  #dlgNext { text-align:right; color:#ffd75f; font-size:13px; margin-top:6px; animation:blink 1.1s infinite; }
+  @keyframes blink { 50% { opacity:.25; } }
+  #dlgChoices { margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+  .chbtn { pointer-events:auto; text-align:left; background:rgba(60,60,120,.45); border:1px solid rgba(140,160,255,.5); color:#fff; padding:10px 14px; border-radius:10px; font-size:15px; cursor:pointer; transition:background .15s; font-family:inherit; }
+  .chbtn:hover { background:rgba(110,110,200,.65); }
+  #fade { position:absolute; inset:0; background:#000; opacity:0; transition:opacity .6s; pointer-events:none; }
+  #toast { position:absolute; top:74px; left:50%; transform:translateX(-50%); background:rgba(20,20,40,.85); color:#ffe9a8; padding:8px 18px; border-radius:10px; border:1px solid rgba(255,220,120,.4); display:none; font-size:15px; text-align:center; max-width:80vw; }
+  #minigame { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:none; pointer-events:auto; text-align:center; color:#fff; }
+  #mgTitle { font-size:20px; margin-bottom:12px; text-shadow:0 2px 6px #000; }
+  #mgBar { position:relative; width:420px; max-width:80vw; height:26px; margin:0 auto; background:rgba(20,20,40,.9); border:2px solid rgba(255,255,255,.4); border-radius:13px; overflow:hidden; }
+  #mgZone { position:absolute; top:0; bottom:0; background:rgba(90,220,120,.75); border-radius:8px; }
+  #mgMark { position:absolute; top:0; bottom:0; width:6px; background:#ffd75f; box-shadow:0 0 10px #ffd75f; }
+  #mgHint { margin-top:10px; font-size:14px; color:#cfd8ff; }
+  #mgScore { margin-top:6px; font-size:15px; color:#9fd8ff; }
+  #screen { position:absolute; inset:0; background:linear-gradient(160deg,#12122b,#1d1230); display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:auto; color:#fff; text-align:center; padding:20px; z-index:50; }
+  #screen h1 { font-size:clamp(28px,6vw,52px); background:linear-gradient(90deg,#ff8fb0,#ffd75f,#8fd0ff); -webkit-background-clip:text; background-clip:text; color:transparent; margin-bottom:8px; }
+  #screen h2 { font-size:clamp(15px,2.5vw,20px); font-weight:400; color:#cfd8ff; margin-bottom:26px; max-width:640px; line-height:1.5; }
+  .mbtn { pointer-events:auto; background:linear-gradient(90deg,#7b4dff,#c94dff); border:none; color:#fff; font-size:18px; padding:13px 42px; border-radius:30px; cursor:pointer; margin:6px; font-family:inherit; box-shadow:0 6px 20px rgba(120,60,255,.4); }
+  .mbtn:hover { filter:brightness(1.15); }
+  .mbtn.sec { background:rgba(255,255,255,.12); box-shadow:none; font-size:15px; padding:10px 30px; }
+  #controls { margin-top:26px; color:#8a93c0; font-size:13.5px; line-height:1.8; }
+  #controls b { color:#cfd8ff; }
+  #joy { display:none; position:absolute; left:26px; bottom:30px; width:124px; height:124px; border-radius:50%; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.28); pointer-events:auto; touch-action:none; }
+  #joyKnob { position:absolute; left:41px; top:41px; width:42px; height:42px; border-radius:50%; background:rgba(255,255,255,.38); box-shadow:0 2px 8px rgba(0,0,0,.5); }
+  #btnAct { display:none; position:absolute; right:30px; bottom:44px; width:78px; height:78px; border-radius:50%; background:rgba(255,255,255,.12); border:2px solid rgba(255,255,255,.4); color:#fff; font-size:15px; font-weight:700; font-family:inherit; pointer-events:auto; touch-action:manipulation; text-shadow:0 1px 3px #000; }
+  #btnAct:active { background:rgba(255,215,95,.35); }
+  #btnAct span { display:block; font-size:24px; }
+  canvas { touch-action:none; }
+  body.touch #dialog { bottom:120px; }
+  #storyCard { display:none; max-width:640px; background:rgba(10,10,30,.8); border:1px solid rgba(255,255,255,.2); border-radius:14px; padding:22px 26px; text-align:left; font-size:15.5px; line-height:1.65; color:#e8ecff; margin-bottom:18px; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="hud">
+    <div class="row">📅 <span id="dayLabel">Понедельник</span> · 🕒 <span id="timeLabel">07:00</span> · 💰 <span id="moneyLabel">500</span>₽</div>
+    <div class="row">Отношения с Алисой: <span id="hearts"></span></div>
+  </div>
+  <div id="objective"><span id="objText"></span><div id="dist"></div></div>
+  <div id="prompt"></div>
+  <div id="toast"></div>
+  <div id="dialog">
+    <div id="dlgBox">
+      <div id="dlgWho"></div>
+      <div id="dlgText"></div>
+      <div id="dlgChoices"></div>
+      <div id="dlgNext">Далее ▸ (E / Пробел)</div>
+    </div>
+  </div>
+  <div id="minigame">
+    <div id="mgTitle"></div>
+    <div id="mgBar"><div id="mgZone"></div><div id="mgMark"></div></div>
+    <div id="mgHint">Жми ПРОБЕЛ, когда жёлтая полоса в зелёной зоне!</div>
+    <div id="mgScore"></div>
+  </div>
+  <div id="joy"><div id="joyKnob"></div></div>
+  <button id="btnAct"><span>✋</span><small id="btnActLabel">E</small></button>
+  <div id="fade"></div>
+  <div id="screen">
+    <h1>7 дней до признания</h1>
+    <h2 id="h2">История о школе, городе Заречье, лучшем друге Максе и девочке по имени Алиса.<br>У тебя неделя, чтобы решиться.</h2>
+    <div id="storyCard"></div>
+    <div id="menuBtns">
+      <button class="mbtn" id="btnStart">▶ Начать историю</button>
+      <button class="mbtn sec" id="btnContinue" style="display:none">⏵ Продолжить</button>
+    </div>
+    <div id="controls">
+      <b>WASD</b> — ходьба · <b>Shift</b> — бег · <b>мышь (зажать)</b> — камера · <b>колесо</b> — зум<br>
+      <b>E / Пробел</b> — действие, диалог, продолжение · <b>E</b> на лавочке — ускорить время
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const $ = id => document.getElementById(id);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 600);
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+const hemi = new THREE.HemisphereLight(0xbfd8ff, 0x3a4a3a, 0.9);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff2d8, 1.4);
+sun.position.set(60, 90, 30);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -120; sun.shadow.camera.right = 120;
+sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120;
+sun.shadow.camera.far = 400;
+scene.add(sun);
+
+const DAYS = ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
+const state = {
+  day: 1, time: 7*60, money: 500, hearts: 1,
+  flags: {}, zone: 'city', started: false, over: false,
+  sitting: false, umbrella: false
+};
+let handlers = {};
+let triggers = [];
+let dialog = null;
+let minigame = null;
+let objective = null;
+let camYaw = Math.PI, camPitch = 0.5, camDist = 8;
+let dragging = false;
+
+function save() {
+  localStorage.setItem('schoolLoveSave', JSON.stringify({
+    day: state.day, hearts: state.hearts, money: state.money, flags: state.flags
+  }));
+}
+function hasSave() { return !!localStorage.getItem('schoolLoveSave'); }
+
+function windowsTexture(base, litColor) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = base; g.fillRect(0,0,128,128);
+  for (let y=8; y<128; y+=20) for (let x=8; x<128; x+=20) {
+    g.fillStyle = Math.random() < 0.25 ? litColor : 'rgba(160,200,255,0.55)';
+    g.fillRect(x, y, 12, 12);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+function textSprite(text, color, size, bg) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+  const g = c.getContext('2d');
+  if (bg) { g.fillStyle = bg; g.fillRect(0,0,512,128); }
+  g.font = 'bold ' + size + 'px Arial'; g.textAlign='center'; g.textBaseline='middle';
+  g.fillStyle = color; g.fillText(text, 256, 64);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:new THREE.CanvasTexture(c), transparent:true }));
+  sp.scale.set(10, 2.5, 1);
+  return sp;
+}
+
+const zoneGroups = {};
+const colliders = { city:[], home:[], home2:[], school:[] };
+function makeZone(name) { zoneGroups[name] = new THREE.Group(); scene.add(zoneGroups[name]); return zoneGroups[name]; }
+function box(zone, x,y,z, sx,sy,sz, material, collide) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz), material);
+  m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true;
+  zoneGroups[zone].add(m);
+  if (collide !== false) colliders[zone].push({ x, z, hx:sx/2, hz:sz/2 });
+  return m;
+}
+const matCache = {};
+function mat(color, tex) {
+  const key = color + (tex ? 'T' : '');
+  if (!matCache[key]) matCache[key] = tex ? new THREE.MeshLambertMaterial({ map:tex }) : new THREE.MeshLambertMaterial({ color });
+  return matCache[key];
+}
+
+const city = makeZone('city');
+const home = makeZone('home');
+const home2 = makeZone('home2');
+const school = makeZone('school');
+
+/* ---------- ГОРОД ---------- */
+{
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400,400), mat('#6fae5c'));
+  ground.rotation.x = -Math.PI/2; ground.receiveShadow = true;
+  city.add(ground);
+  const roadMat = mat('#3c3c46');
+  const road1 = new THREE.Mesh(new THREE.PlaneGeometry(400,9), roadMat);
+  road1.rotation.x = -Math.PI/2; road1.position.y = 0.02; road1.receiveShadow = true; city.add(road1);
+  const road2 = new THREE.Mesh(new THREE.PlaneGeometry(9,400), roadMat);
+  road2.rotation.x = -Math.PI/2; road2.position.y = 0.02; road2.receiveShadow = true; city.add(road2);
+  for (let x=-190; x<190; x+=12) {
+    const l = new THREE.Mesh(new THREE.PlaneGeometry(4,0.5), mat('#f5e97a'));
+    l.rotation.x = -Math.PI/2; l.position.set(x,0.03,0); city.add(l);
+  }
+  for (let z=-190; z<190; z+=12) {
+    const l = new THREE.Mesh(new THREE.PlaneGeometry(0.5,4), mat('#f5e97a'));
+    l.rotation.x = -Math.PI/2; l.position.set(0,0.03,z); city.add(l);
+  }
+
+  const schTex = windowsTexture('#b0533f', '#fff3b0');
+  box('city', 65,6,-46, 56,12,28, mat('#b0533f', schTex));
+  box('city', 65,13.5,-46, 20,2,6, mat('#8a3a2c'));
+  const schSign = textSprite('ШКОЛА №7', '#ffffff', 52, 'rgba(120,30,30,0.85)');
+  schSign.position.set(65,10.5,-31.5); city.add(schSign);
+  box('city', 50,1.2,-31, 8,2.4,1, mat('#6b4a2f'));
+  box('city', 80,1.2,-31, 8,2.4,1, mat('#6b4a2f'));
+  const flagP = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,9), mat('#cccccc'));
+  flagP.position.set(40,4.5,-32); city.add(flagP);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(3,1.8), new THREE.MeshLambertMaterial({ color:0x3b6fd6, side:THREE.DoubleSide }));
+  flag.position.set(41.6,8,-32); city.add(flag);
+
+  box('city', -40,3,26, 14,6,10, mat('#e8c877', windowsTexture('#e8c877','#ffe9a0')));
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(10.5,4,4), mat('#a5502f'));
+  roof.position.set(-40,8,26); roof.rotation.y = Math.PI/4; roof.castShadow = true; city.add(roof);
+  const doorDeco = new THREE.Mesh(new THREE.BoxGeometry(2.2,2.6,0.4), mat('#7a4a26'));
+  doorDeco.position.set(-40,1.3,20.8); city.add(doorDeco);
+  const homeSign = textSprite('Твой дом', '#ffe9a8', 40);
+  homeSign.scale.set(7,1.8,1); homeSign.position.set(-40,5,20.6); city.add(homeSign);
+
+  box('city', 15,3.5,-28, 18,7,12, mat('#d98a6a', windowsTexture('#d98a6a','#ffe9a0')));
+  const cafeSign = textSprite('КАФЕ «У МАКСА»', '#3a1f10', 40, '#ffdf9e');
+  cafeSign.position.set(15,6,-21.5); city.add(cafeSign);
+
+  box('city', 32,3.5,22, 14,7,12, mat('#7a6ad9', windowsTexture('#7a6ad9','#c9baff')));
+  const arcSign = textSprite('АРКАДА', '#ffffff', 44, 'rgba(60,40,140,0.9)');
+  arcSign.position.set(32,6,15.5); city.add(arcSign);
+
+  const parkLawn = new THREE.Mesh(new THREE.PlaneGeometry(90,80), mat('#5d9e4a'));
+  parkLawn.rotation.x = -Math.PI/2; parkLawn.position.set(-80,0.01,-62); parkLawn.receiveShadow = true; city.add(parkLawn);
+  const fBase = new THREE.Mesh(new THREE.CylinderGeometry(5,5.6,1,20), mat('#b8b8c0'));
+  fBase.position.set(-80,0.5,-62); fBase.castShadow = true; city.add(fBase);
+  const water = new THREE.Mesh(new THREE.CircleGeometry(4.4,20), new THREE.MeshLambertMaterial({ color:0x4aa8d8, transparent:true, opacity:0.85 }));
+  water.rotation.x = -Math.PI/2; water.position.set(-80,1.05,-62); city.add(water);
+  window._fountain = water;
+  colliders.city.push({ x:-80, z:-62, hx:5, hz:5 });
+
+  function tree(x,z,s) {
+    s = s || 1;
+    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.35*s,0.45*s,3*s), mat('#6b4a2f'));
+    tr.position.set(x,1.5*s,z); tr.castShadow = true; city.add(tr);
+    const fo = new THREE.Mesh(new THREE.SphereGeometry(2.1*s,8,7), mat('#3f8f3a'));
+    fo.position.set(x,3.9*s,z); fo.castShadow = true; city.add(fo);
+    colliders.city.push({ x, z, hx:0.6, hz:0.6 });
+  }
+  [[-60,-40],[-95,-38],[-62,-85],[-100,-88],[-45,-70],[-115,-60],[-85,-30,0.8],[-55,-55,0.9],[-105,-50,1.1],[8,12],[22,-10],[-12,-18],[45,12],[-15,15],[55,15],[-70,12],[-95,10]].forEach(p=>tree(p[0],p[1],p[2]));
+
+  function bench(x,z,ry) {
+    const b = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(3,0.25,1), mat('#8a5a30'));
+    seat.position.y = 0.55; seat.castShadow = true; b.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(3,0.8,0.15), mat('#8a5a30'));
+    back.position.set(0,1.05,-0.45); b.add(back);
+    [-1.2,1.2].forEach(dx => { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2,0.55,0.9), mat('#4a4a4a')); leg.position.set(dx,0.28,0); b.add(leg); });
+    b.position.set(x,0,z); b.rotation.y = ry; city.add(b);
+    colliders.city.push({ x, z, hx:1.5, hz:0.8 });
+  }
+  bench(-73,-55,0.4); bench(-88,-55,-0.4); bench(-80,-48,Math.PI); bench(-80,-70,0);
+  bench(65,-26,Math.PI); bench(58,-26,Math.PI);
+
+  box('city', -52,1.1,-40, 4.5,2.2,2.5, mat('#c9566e'));
+  const stallRoof = new THREE.Mesh(new THREE.PlaneGeometry(5.5,3.4), new THREE.MeshLambertMaterial({ color:0xff8fa0, side:THREE.DoubleSide }));
+  stallRoof.rotation.x = -Math.PI/2.4; stallRoof.position.set(-52,2.6,-40); city.add(stallRoof);
+  const flSign = textSprite('Цветы', '#ffffff', 44, 'rgba(180,50,90,0.9)');
+  flSign.scale.set(6,1.5,1); flSign.position.set(-52,3.6,-40); city.add(flSign);
+
+  const fillTex1 = windowsTexture('#8fa3c9','#fff3b0');
+  const fillTex2 = windowsTexture('#a3b98f','#fff3b0');
+  const fills = [[-20,40,18,8,14],[-45,-10,22,10,16],[-85,20,16,12,14],[20,-60,20,9,18],[55,25,16,14,12],[-120,-15,18,11,15],[90,-10,24,13,18],[35,45,20,10,16],[-60,-120,26,12,20],[10,-110,20,10,16],[90,-70,18,12,14],[-110,60,22,10,18]];
+  fills.forEach((f,i) => box('city', f[0],f[3]/2,f[1], f[2],f[3],f[4], mat(i%2?'#8fa3c9':'#a3b98f', i%2?fillTex1:fillTex2)));
+
+  for (let x=-150; x<150; x+=30) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,5), mat('#555560'));
+    p.position.set(x,2.5,5.4); city.add(p);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.4), new THREE.MeshLambertMaterial({ color:0xfff0a0, emissive:0x666040 }));
+    lamp.position.set(x,5.1,5.4); city.add(lamp);
+  }
+
+  const rainGeo = new THREE.BufferGeometry();
+  const rp = new Float32Array(1200*3);
+  for (let i=0;i<1200;i++){ rp[i*3]=(Math.random()-0.5)*160; rp[i*3+1]=Math.random()*30; rp[i*3+2]=(Math.random()-0.5)*160; }
+  rainGeo.setAttribute('position', new THREE.BufferAttribute(rp,3));
+  window._rain = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color:0x9fc4ff, size:0.22, transparent:true, opacity:0.7 }));
+  window._rain.visible = false;
+  city.add(window._rain);
+}
+
+/* ---------- ДОМ: 1 ЭТАЖ ---------- */
+{
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(20,14), mat('#b98d5e'));
+  floor.rotation.x = -Math.PI/2; floor.position.set(500,0,0); floor.receiveShadow = true; home.add(floor);
+  const wallMat = mat('#f0e2c8');
+  box('home', 500,1.6,-7.2, 20,3.2,0.4, wallMat);
+  box('home', 490.2,1.6,0, 0.4,3.2,14, wallMat);
+  box('home', 509.8,1.6,4.5, 0.4,3.2,5.2, wallMat);
+  box('home', 509.8,1.6,-4.5, 0.4,3.2,5.2, wallMat);
+  box('home', 505,1.6,7.2, 10,3.2,0.4, wallMat);
+  box('home', 495,1.6,7.2, 10,3.2,0.4, wallMat);
+  box('home', 500,3.3,0, 20,0.4,14, mat('#f7f2e5'), false);
+  box('home', 500,0.5,3, 3,1,1.6, mat('#8a5a30'));
+  box('home', 500,1.05,3, 2.6,0.15,1.2, mat('#ffffff'), false);
+  box('home', 493,0.6,-3, 1.2,1.2,3.4, mat('#5a7ac9'));
+  box('home', 492.6,1.2,-3, 0.5,1.6,3.4, mat('#4a68b0'), false);
+  box('home', 504,0.9,-5.6, 3,1.8,1, mat('#d9c9a8'));
+  box('home', 509.3,1.5,-3, 0.3,1.2,2.2, mat('#222229'), false);
+  box('home', 492.5,1,5.5, 5,2,3, mat('#9a8a6a'));
+  for (let i=0;i<6;i++) box('home', 490.8+i*0.7,0.25+i*0.33,5.5, 0.7,0.5,3, mat('#8a7a5a'), false);
+  const note = textSprite('Записка от мамы', '#3a2a10', 40, '#fff3c9');
+  note.scale.set(4,1,1); note.position.set(500,1.5,3); home.add(note);
+}
+
+/* ---------- ДОМ: 2 ЭТАЖ (комната) ---------- */
+{
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(16,12), mat('#c9a06a'));
+  floor.rotation.x = -Math.PI/2; floor.position.set(600,0,0); floor.receiveShadow = true; home2.add(floor);
+  const wallMat = mat('#d9c9e8');
+  box('home2', 600,1.6,-6.2, 16,3.2,0.4, wallMat);
+  box('home2', 600,1.6,6.2, 16,3.2,0.4, wallMat);
+  box('home2', 592.2,1.6,0, 0.4,3.2,12, wallMat);
+  box('home2', 607.8,1.6,0, 0.4,3.2,12, wallMat);
+  box('home2', 600,3.3,0, 16,0.4,12, mat('#f7f2e5'), false);
+  box('home2', 596,0.5,3.5, 4,1,2.2, mat('#c95f7a'));
+  box('home2', 596,1.05,4.3, 3.8,0.3,0.7, mat('#ffffff'), false);
+  box('home2', 595.4,1.5,0.5, 1,2,0.5, mat('#7a5a8a'));
+  box('home2', 596.6,1.5,0.5, 1,2,0.5, mat('#7a5a8a'));
+  box('home2', 604,0.6,-4.5, 2.6,1.2,1.2, mat('#8a6a4a'));
+  const poster = textSprite('РОК', '#ffffff', 52, 'rgba(150,40,120,0.8)');
+  poster.scale.set(4,1,1); poster.position.set(600,2.2,-5.9); home2.add(poster);
+  box('home2', 599,0.6,5.2, 2,0.5,0.8, mat('#6a8ac9'), false);
+}
+
+/* ---------- ШКОЛА: КЛАСС ---------- */
+{
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(24,14), mat('#c9b98a'));
+  floor.rotation.x = -Math.PI/2; floor.position.set(700,0,0); floor.receiveShadow = true; school.add(floor);
+  const wallMat = mat('#e8e0c9');
+  box('school', 700,1.7,-7.2, 24,3.4,0.4, wallMat);
+  box('school', 700,1.7,7.2, 24,3.4,0.4, wallMat);
+  box('school', 688.2,1.7,-3.4, 0.4,3.4,7.2, wallMat);
+  box('school', 688.2,1.7,4.4, 0.4,3.4,5.6, wallMat);
+  box('school', 711.8,1.7,0, 0.4,3.4,14, wallMat);
+  box('school', 700,3.5,0, 24,0.4,14, mat('#f7f2e5'), false);
+  box('school', 706,1.6,-6.8, 7,2.2,0.2, mat('#2f5a3a'), false);
+  box('school', 706,0.7,-5.9, 6,0.3,0.8, mat('#8a6a4a'), false);
+  for (let r=0;r<3;r++) for (let cix=0;cix<3;cix++) {
+    box('school', 694+cix*3,0.4,-2+r*2.6, 2,0.8,1.2, mat('#d9a05a'));
+    box('school', 694+cix*3,1,-2.7+r*2.6, 2,1.2,0.2, mat('#d9a05a'), false);
+  }
+  box('school', 706,0.55,-3.5, 3,1.1,1.2, mat('#8a5a30'));
+  const clock = new THREE.Mesh(new THREE.CircleGeometry(0.6,20), mat('#ffffff'));
+  clock.position.set(700,2.6,-6.9); school.add(clock);
+}
+
+/* ---------- ПЕРСОНАЖИ ---------- */
+function makePerson(shirt, pants, hair, skin) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.9,0.4), mat(shirt));
+  body.position.y = 1.0; body.castShadow = true; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32,10,9), mat(skin));
+  head.position.y = 1.75; head.castShadow = true; g.add(head);
+  const hr = new THREE.Mesh(new THREE.SphereGeometry(0.34,10,9), mat(hair));
+  hr.position.set(0,1.85,-0.06); hr.scale.set(1,0.8,1); g.add(hr);
+  const l1 = new THREE.Mesh(new THREE.BoxGeometry(0.26,0.6,0.28), mat(pants));
+  l1.position.set(-0.18,0.3,0); g.add(l1);
+  const l2 = l1.clone(); l2.position.x = 0.18; g.add(l2);
+  g.userData.legs = [l1,l2];
+  return g;
+}
+const player = makePerson(0x3a6ac9, 0x2a3a55, 0x3a2a1a, 0xf0c8a0);
+scene.add(player);
+player.position.set(-40, 0, 20);
+
+const umb = new THREE.Mesh(new THREE.ConeGeometry(1.4,0.6,10), new THREE.MeshLambertMaterial({ color:0xd94f6e }));
+umb.position.y = 2.55; umb.visible = false;
+player.add(umb);
+window._umbrella = umb;
+
+const npcs = {};
+function makeNPC(key, shirt, pants, hair, skin) {
+  const g = makePerson(shirt, pants, hair, skin);
+  g.visible = false; scene.add(g);
+  npcs[key] = { mesh:g, zone:null, follow:false };
+}
+makeNPC('alisa', 0xe87a9a, 0x3a4a6a, 0xd9a040, 0xf0c8a0);
+makeNPC('max', 0x4ac97a, 0x333344, 0x8a4a20, 0xf0c8a0);
+makeNPC('teacher', 0x8a5aa8, 0x3a3a3a, 0x555566, 0xf0c8a0);
+makeNPC('dima', 0xc95a3a, 0x2a2a2a, 0x2a1a1a, 0xe0b088);
+makeNPC('stall', 0xd94f8a, 0x4a4a5a, 0x3a3a3a, 0xf0c8a0);
+makeNPC('cat', 0xe8a94a, 0xe8a94a, 0xe8a94a, 0xe8a94a);
+npcs.cat.mesh.scale.set(0.55,0.5,0.8);
+
+function placeNPC(key, zone, x, z, ry) {
+  const n = npcs[key];
+  n.zone = zone; n.follow = false;
+  n.mesh.position.set(x, 0, z); n.mesh.rotation.y = ry || 0; n.mesh.visible = true;
+}
+function hideNPC(key) { npcs[key].mesh.visible = false; npcs[key].zone = null; npcs[key].follow = false; }
+function hideAllNPCs() { Object.keys(npcs).forEach(hideNPC); }
+
+/* ---------- ИНТЕРАКТИВЫ ---------- */
+let interactables = [];
+function addInter(id, zone, x, z, r, label) { interactables.push({ id, zone, x, z, r, label }); }
+
+addInter('bed','home2', 596,4.9, 2.2,'Лечь спать');
+addInter('wardrobe','home2', 596,1.6, 1.8,'Открыть шкаф');
+addInter('stairsUp','home', 492.5,5.5, 3.4,'Подняться наверх');
+addInter('stairsDown','home2', 596,5.4, 1.8,'Спуститься вниз');
+addInter('note','home', 500,3.6, 1.8,'Прочитать записку мамы');
+addInter('homeDoor','home', 509.9,0, 1.8,'Выйти на улицу');
+addInter('schoolDoor','city', 65,-30.2, 2.4,'Войти в школу');
+addInter('schoolDoorIn','school', 688.4,0.5, 1.8,'Выйти из школы');
+addInter('desk','school', 694,2.1, 1.8,'Сесть за парту');
+addInter('bench1','city', -73,-55, 2,'Присесть на лавочку');
+addInter('bench2','city', -88,-55, 2,'Присесть на лавочку');
+addInter('bench3','city', -80,-48, 2,'Присесть на лавочку');
+addInter('bench4','city', -80,-70, 2,'Присесть на лавочку');
+addInter('sofa','home', 494.5,-3, 1.8,'Присесть на диван');
+addInter('fountain','city', -80,-55.5, 4.5,'Посмотреть на фонтан');
+addInter('cafe','city', 15,-21.4, 2,'Зайти в кафе');
+addInter('arcade','city', 32,15.4, 2,'Зайти в аркаду');
+addInter('flowers','city', -52,-38.2, 2,'Купить цветы');
+
+const TALK = { alisa:'Алиса', max:'Макс', teacher:'Мария Ивановна', dima:'Дима', stall:'Продавщицу цветов', cat:'Барсика' };
+function labelOf(i) { return TALK[i.id] ? 'Поговорить с ' + TALK[i.id] : i.label; }
+
+/* ---------- ДИАЛОГИ ---------- */
+function runDialog(seq, onEnd) {
+  dialog = { seq, i:0, onEnd: onEnd || null };
+  showDialogLine();
+}
+function say(who, text) { return { who, text }; }
+function ch(options) { return { choice: options }; }
+
+function showDialogLine() {
+  const d = dialog;
+  const s = d.seq[d.i];
+  $('dlgChoices').innerHTML = '';
+  if (!s) {
+    $('dialog').style.display = 'none';
+    const cb = d.onEnd; dialog = null;
+    if (cb) cb();
+    return;
+  }
+  if (s.do) s.do();
+  if (s.choice) {
+    $('dlgWho').textContent = 'Твой выбор:';
+    $('dlgText').textContent = '';
+    $('dlgNext').style.display = 'none';
+    s.choice.forEach(opt => {
+      const b = document.createElement('button');
+      b.className = 'chbtn'; b.textContent = opt.t;
+      b.onclick = () => {
+        const cur = dialog; dialog = null;
+        $('dialog').style.display = 'none';
+        if (opt.do) opt.do();
+        if (opt.then && dialog === null) cur.seq.splice(cur.i+1, 0, ...opt.then);
+        if (dialog === null) { dialog = cur; cur.i++; showDialogLine(); }
+      };
+      $('dlgChoices').appendChild(b);
+    });
+    $('dialog').style.display = 'block';
+  } else {
+    $('dlgWho').textContent = s.who ? s.who + ':' : '';
+    $('dlgText').textContent = s.text;
+    $('dlgNext').style.display = 'block';
+    $('dialog').style.display = 'block';
+  }
+}
+function advanceDialog() {
+  if (!dialog) return;
+  const s = dialog.seq[dialog.i];
+  if (s && s.choice) return;
+  dialog.i++; showDialogLine();
+}
+
+function toast(text, ms) {
+  const t = $('toast'); t.textContent = text; t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(()=>{ t.style.display='none'; }, ms || 2600);
+}
+function hearts(n) {
+  state.hearts = Math.max(0, Math.min(10, state.hearts + n)); updateHUD();
+  toast(n>0 ? '❤ Отношения с Алисой окрепли' : '💔 Отношения пострадали');
+}
+function pay(sum) { if (state.money < sum) return false; state.money -= sum; updateHUD(); return true; }
+
+/* ---------- ЦЕЛИ / ТРИГГЕРЫ ---------- */
+const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.7,30,12,1,true),
+  new THREE.MeshBasicMaterial({ color:0xffd75f, transparent:true, opacity:0.22, side:THREE.DoubleSide, depthWrite:false }));
+scene.add(beacon); beacon.visible = false;
+
+function setObjective(text, x, z, tzone) {
+  objective = { text, x: (x===undefined?null:x), z, zone: tzone };
+  $('objText').textContent = text;
+  if (objective.x === null) beacon.visible = false;
+}
+function addTrigger(zone,x,z,r,fn,once) { triggers.push({zone,x,z,r,fn,once:once!==false,fired:false}); }
+function clearTriggers() { triggers = []; }
+
+/* ---------- ЗОНЫ ---------- */
+function setZone(name, px, pz, ry) {
+  state.zone = name;
+  Object.keys(zoneGroups).forEach(k => zoneGroups[k].visible = (k === name));
+  Object.values(npcs).forEach(n => { n.mesh.visible = (n.zone === name); });
+  player.position.set(px, 0, pz);
+  player.rotation.y = ry || 0;
+  window._rain.visible = (name === 'city' && !!state.flags.rain);
+  camYaw = (ry || 0) + Math.PI; camPitch = 0.5;
+  updateCamera(0);
+}
+
+/* ---------- МИНИ-ИГРА ---------- */
+function timingGame(title, rounds, zoneW, speed, cb) {
+  minigame = { rounds, cur:0, hits:0, pos:0, dir:1, speed, zoneW, zonePos: 20+Math.random()*55, cb };
+  $('mgTitle').textContent = title;
+  $('mgScore').textContent = 'Попытка 1 / ' + rounds;
+  $('minigame').style.display = 'block';
+  layoutMG();
+}
+function layoutMG() {
+  const m = minigame; if (!m) return;
+  $('mgZone').style.left = m.zonePos + '%';
+  $('mgZone').style.width = m.zoneW + '%';
+}
+function mgPress() {
+  const m = minigame; if (!m) return;
+  const ok = m.pos >= m.zonePos && m.pos <= m.zonePos + m.zoneW;
+  if (ok) m.hits++;
+  toast(ok ? '✅ Попалось!' : '❌ Мимо', 900);
+  m.cur++;
+  if (m.cur >= m.rounds) {
+    $('minigame').style.display = 'none';
+    const cb = m.cb, hits = m.hits; minigame = null;
+    cb(hits);
+  } else {
+    m.zonePos = 15 + Math.random() * 65;
+    m.speed *= 1.08;
+    $('mgScore').textContent = 'Попытка ' + (m.cur+1) + ' / ' + m.rounds;
+    layoutMG();
+  }
+}
+
+/* ---------- ВВОД ---------- */
+const keys = {};
+addEventListener('keydown', e => {
+  if (e.code === 'Space') e.preventDefault();
+  keys[e.code] = true;
+  if (!state.started) return;
+  if (minigame && (e.code === 'Space' || e.code === 'KeyE')) { mgPress(); return; }
+  if (dialog && (e.code === 'Space' || e.code === 'KeyE' || e.code === 'Enter')) { advanceDialog(); return; }
+  if (e.code === 'KeyE' || e.code === 'Enter') tryInteract();
+});
+addEventListener('keyup', e => keys[e.code] = false);
+renderer.domElement.addEventListener('mousedown', () => dragging = true);
+addEventListener('mouseup', () => dragging = false);
+addEventListener('mousemove', e => {
+  if (!dragging) return;
+  camYaw -= e.movementX * 0.005;
+  camPitch = Math.max(0.12, Math.min(1.2, camPitch + e.movementY * 0.004));
+});
+addEventListener('wheel', e => { camDist = Math.max(4, Math.min(15, camDist + e.deltaY * 0.01)); });
+
+/* ---------- СЕНСОРНОЕ УПРАВЛЕНИЕ ---------- */
+const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+const joy = { x: 0, y: 0, id: null };
+if (isTouch) {
+  document.body.classList.add('touch');
+  $('joy').style.display = 'block';
+  $('btnAct').style.display = 'block';
+  $('mgHint').textContent = 'Тапни по экрану, когда жёлтая полоса в зелёной зоне!';
+  const knob = $('joyKnob');
+  const joyEl = $('joy');
+  const joyMove = t => {
+    const r = joyEl.getBoundingClientRect();
+    let dx = (t.clientX - (r.left + r.width/2)) / (r.width/2);
+    let dy = (t.clientY - (r.top + r.height/2)) / (r.height/2);
+    const len = Math.hypot(dx, dy);
+    if (len > 1) { dx /= len; dy /= len; }
+    joy.x = dx; joy.y = dy;
+    knob.style.left = 41 + dx * 34 + 'px';
+    knob.style.top = 41 + dy * 34 + 'px';
+  };
+  joyEl.addEventListener('touchstart', e => { e.preventDefault(); joy.id = e.changedTouches[0].identifier; joyMove(e.changedTouches[0]); }, { passive:false });
+  joyEl.addEventListener('touchmove', e => { e.preventDefault(); for (const t of e.changedTouches) if (t.identifier === joy.id) joyMove(t); }, { passive:false });
+  const joyEnd = e => { for (const t of e.changedTouches) if (t.identifier === joy.id) { joy.id = null; joy.x = 0; joy.y = 0; knob.style.left = '41px'; knob.style.top = '41px'; } };
+  joyEl.addEventListener('touchend', joyEnd);
+  joyEl.addEventListener('touchcancel', joyEnd);
+  let camTouch = null, camX = 0, camY = 0;
+  renderer.domElement.addEventListener('touchstart', e => {
+    const t = e.changedTouches[0];
+    camTouch = t.identifier; camX = t.clientX; camY = t.clientY;
+  }, { passive:true });
+  renderer.domElement.addEventListener('touchmove', e => {
+    for (const t of e.changedTouches) if (t.identifier === camTouch) {
+      camYaw -= (t.clientX - camX) * 0.006;
+      camPitch = Math.max(0.12, Math.min(1.2, camPitch + (t.clientY - camY) * 0.005));
+      camX = t.clientX; camY = t.clientY;
+    }
+  }, { passive:true });
+  renderer.domElement.addEventListener('touchend', e => { for (const t of e.changedTouches) if (t.identifier === camTouch) camTouch = null; });
+  const act = () => {
+    if (!state.started) return;
+    if (minigame) { mgPress(); return; }
+    if (dialog) { advanceDialog(); return; }
+    tryInteract();
+  };
+  $('btnAct').addEventListener('click', act);
+  $('minigame').addEventListener('pointerdown', e => { e.preventDefault(); mgPress(); });
+  $('dialog').addEventListener('click', e => {
+    if (e.target.classList && e.target.classList.contains('chbtn')) return;
+    if (dialog) advanceDialog();
+  });
+  let pinchD = 0;
+  renderer.domElement.addEventListener('touchmove', e => {
+    if (e.touches.length === 2) {
+      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      if (pinchD) camDist = Math.max(4, Math.min(15, camDist - (d - pinchD) * 0.03));
+      pinchD = d; camTouch = null;
+    } else pinchD = 0;
+  }, { passive:true });
+  renderer.domElement.addEventListener('touchend', () => pinchD = 0);
+}
+
+/* ---------- ДЕЙСТВИЯ ---------- */
+let currentInter = null;
+function tryInteract() {
+  if (state.sitting) { state.sitting = false; player.position.y = 0; toast('Ты встал.'); return; }
+  if (!currentInter) return;
+  if (currentInter.id.startsWith('bench') || currentInter.id === 'sofa') {
+    state.sitting = true; player.position.y = -0.4;
+    toast('Отдыхаешь... время идёт быстрее (E — встать)');
+    return;
+  }
+  const h = handlers[currentInter.id];
+  if (h) h();
+  else if (currentInter.id === 'fountain') runDialog([ say('', 'Фонтан тихо журчит. Пожалуй, самое романтичное место в Заречье.') ]);
+  else toast('Сейчас не время.');
+}
+
+function gotoSleep() {
+  if (state.over) return;
+  state.sitting = false; player.position.y = 0;
+  $('fade').style.opacity = 1;
+  setTimeout(() => {
+    state.day++;
+    state.time = 7*60;
+    hideAllNPCs();
+    clearTriggers(); handlers = {};
+    state.umbrella = false; window._umbrella.visible = false;
+    state.flags.rain = false;
+    if (window._bouquet) { player.remove(window._bouquet); window._bouquet = null; }
+    save();
+    if (dayScripts[state.day]) dayScripts[state.day]();
+    setTimeout(()=> $('fade').style.opacity = 0, 500);
+  }, 700);
+}
+
+function walkWith(npcKey, objectiveText, x, z, onArrive) {
+  npcs[npcKey].follow = true;
+  setObjective(objectiveText, x, z, 'city');
+  addTrigger('city', x, z, 3, () => {
+    npcs[npcKey].follow = false;
+    onArrive();
+  });
+}
+
+function addBouquet() {
+  const b = new THREE.Group();
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.5), mat('#3f8f3a'));
+  stem.position.y = -0.25; b.add(stem);
+  for (let i=0;i<5;i++) {
+    const f = new THREE.Mesh(new THREE.SphereGeometry(0.09,6,5), mat('#e84a6f'));
+    f.position.set(Math.sin(i*1.3)*0.12, 0.05 + (i%2)*0.08, Math.cos(i*1.3)*0.12);
+    b.add(f);
+  }
+  b.position.set(0.45, 0.85, -0.3);
+  player.add(b);
+  window._bouquet = b;
+}
+
+function buyFlowers() {
+  if (!state.flags.canFlowers) { toast('Палатка работает по вечерам. И не для всех.'); return; }
+  if (state.flags.boughtFlowers) { toast('Розы уже у тебя в руках 🌷'); return; }
+  placeNPC('stall','city',-52,-37,Math.PI);
+  runDialog([
+    say('Продавщица', 'О-о, юноша! Влюблённые глаза вижу сразу. Розы, 200₽. Букет для той самой?'),
+    ch([
+      { t: 'Купить розы (200₽)', do: () => {
+          if (pay(200)) { state.flags.boughtFlowers = true; addBouquet(); toast('🌷 Розы теперь с тобой!'); }
+          else toast('Не хватает денег... Обидно.');
+        } },
+      { t: '«Я подумаю.»', do: () => {} },
+    ]),
+    { do: () => hideNPC('stall') },
+  ]);
+}
+
+/* ============================ ДНИ ============================ */
+const dayScripts = {};
+
+/* ---------- ДЕНЬ 1 ---------- */
+dayScripts[1] = function() {
+  state.started = true;
+  setZone('home2', 599.5, 5.2, Math.PI);
+  updateHUD();
+  setObjective('Понедельник. Проснуться! (кровать)');
+  handlers.bed = () => {
+    handlers.bed = null;
+    runDialog([
+      say('Мама (за дверью)', 'Артём! Вставай, ты опять проспишь первый урок!'),
+      say('Артём', 'Уже встаю-встаю...'),
+      say('Артём (мысли)', 'Сентябрь. Второй год в школе №7. И... та новенькая. Алиса. Перевелась две недели назад, а я так и не сказал ей ни слова.'),
+      { do: () => setObjective('Одеться (шкаф)') }
+    ]);
+    handlers.wardrobe = () => {
+      handlers.wardrobe = null;
+      toast('Ты переоделся. Выглядишь прилично!');
+      setObjective('Спуститься вниз по лестнице');
+      handlers.stairsUp = () => {
+        handlers.stairsUp = null;
+        setZone('home', 493, 5, -Math.PI/2);
+        setObjective('Позавтракать: прочитать записку на кухне');
+        handlers.note = () => {
+          handlers.note = null;
+          runDialog([
+            say('Записка мамы', '«Сынок, я уехала на смену. В холодильнике бутерброды. Учителей не злить, домой не поздно. Целую, мама.»'),
+            { do: () => { state.money += 100; updateHUD(); toast('Мама оставила 100₽ на обед 💰'); } },
+            say('Артём', 'Хм. Ну, погнали.'),
+            { do: () => {
+                setObjective('Дойти до школы №7 (восточнее дома, через дорогу)', 65, -27, 'city');
+                handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); };
+                addTrigger('city', 65, -27, 5, () => {
+                  placeNPC('max','city',62,-22,-0.5);
+                  runDialog([
+                    say('Макс', 'О, наконец-то! Я уж думал, ты спишь прямо на тротуаре.'),
+                    say('Артём', 'Прости, будильник подвёл.'),
+                    say('Макс', 'Слушай... вон она идёт. Алиса. К нам в класс перешла, ты же знаешь? Говорят, рисует нереально.'),
+                    say('Артём (мысли)', 'Знаю. Я видел её работы на стенде у кабинета химии. Особенно одну — фонтан в нашем парке.'),
+                    say('Макс', 'Ну так чего стоишь? Иди! ...Или боишься? Ха!'),
+                    ch([
+                      { t: '«Пойду. Чего бояться-то.»', do: () => { state.flags.brave = true; } },
+                      { t: '«Она даже меня не знает...»', then: [ say('Макс', 'Так познакомься! Вы в одном классе сидите, ей-богу.') ] },
+                    ]),
+                    say('Артём (мысли)', 'Ладно. Сегодня. Сегодня точно что-нибудь скажу.'),
+                    { do: () => {
+                        setObjective('Зайти в школу и сесть за парту');
+                        placeNPC('teacher','school',706,-4.5,Math.PI);
+                        placeNPC('alisa','school',697,-1,Math.PI);
+                        handlers.schoolDoor = () => { handlers.schoolDoor = null; setZone('school', 691, 0.5, -Math.PI/2); };
+                      } },
+                  ]);
+                });
+              } }
+          ]);
+        };
+      };
+    };
+  };
+
+  handlers.desk = () => {
+    if (state.flags.lesson1) return;
+    state.flags.lesson1 = true;
+    handlers.desk = null;
+    state.time = Math.max(state.time, 8*60+30);
+    runDialog([
+      say('Мария Ивановна', 'Доброе утро! Сегодня алгебра. К доске пойдёт... Артём.'),
+      say('Артём (мысли)', 'О нет. Уравнение. Дискриминант. Я... вроде помню?'),
+      ch([
+        { t: 'Решить честно', do: () => { toast('Ты решил верно! Класс аплодирует.'); state.flags.confident = true; } },
+        { t: 'Пошутить: «А можно я в столовую схожу вместо этого?»', do: () => { toast('Класс смеётся. Мария Ивановна — нет. Но Алиса улыбнулась в стол.'); } },
+        { t: 'Честно сказать, что не выучил', do: () => { toast('Честно, но грустно. Макс шепчет: «бро...»'); } },
+      ]),
+      say('Алиса (шёпотом)', 'Привет. Ты Артём, да? Слушай, можно на следующий урок сядем вместе? У тебя окошко, а мне свет в глаза не бьёт.'),
+      ch([
+        { t: '«Конечно! Давай.»', do: () => hearts(1) },
+        { t: '«Э-э... да, без проблем.»', do: () => {} },
+      ]),
+      say('Алиса', 'Спасибо! Ой, звонок. Увидимся!'),
+      { do: () => {
+          state.time = Math.max(state.time, 14*60+30);
+          hideNPC('teacher'); hideNPC('alisa');
+          placeNPC('alisa','city',63,-22,-0.5);
+          setObjective('Уроки кончились. Выйди из школы — Алиса ждёт у ворот', 65, -24, 'city');
+          handlers.schoolDoor = null;
+          addTrigger('city', 65, -24, 4, () => {
+            runDialog([
+              say('Алиса', 'О, как раз вовремя! Слушай, погода чудесная... Пойдём в парк? Покажу место, где я рисую.'),
+              ch([
+                { t: '«Пойдём!»', do: () => hearts(1) },
+                { t: '«Я бы не прочь, но дела...»', do: () => hearts(-1), then: [ say('Алиса', 'А-а, ну ладно...'), say('Артём (мысли)', 'Дурак! КАКИЕ, ЧЁРТ ВОЗЬМИ, ДЕЛА?!'), say('Алиса', 'Хотя знаешь... пойдём всё равно. Дело найдётся и в парке.'), { do: () => hearts(1) } ] },
+              ]),
+              { do: () => walkWith('alisa', 'Прогуляться с Алисой до фонтана в парке (юго-запад)', -80, -54, parkScene) },
+            ]);
+          });
+        } },
+    ]);
+  };
+
+  function parkScene() {
+    runDialog([
+      say('Алиса', 'Вот. Фонтан. Я тут сижу почти каждый день и просто смотрю на воду.'),
+      say('Артём', 'Красиво...'),
+      say('Алиса', 'Знаешь, я боялась, что в новой школе мне не с кем будет разговаривать. А ты оказался нормальным.'),
+      ch([
+        { t: '«Ты вообще-то классная. Мне нравится с тобой болтать.»', do: () => hearts(2) },
+        { t: '«Ну, стараемся.»', do: () => hearts(1), then: [ say('Алиса', 'Ха! Скромняга.') ] },
+        { t: 'Спросить, откуда она переехала', do: () => hearts(1), then: [ say('Алиса', 'Из Приморска. Там море, но... не было того, ради чего хочется утром вставать.') ] },
+      ]),
+      say('Алиса', 'Уже темнеет. Мне пора, мама будет волноваться.'),
+      say('Алиса', 'До завтра, Артём. И... спасибо за прогулку.'),
+      { do: () => {
+          hideNPC('alisa');
+          setObjective('Вернись домой и ложись спать. Дом — на западе, дверь с южной стороны', -40, 20, 'city');
+          addTrigger('city', -40, 20, 2.5, () => {
+            setZone('home', 508, 0, Math.PI);
+            setObjective('Поднимись в свою комнату и ложись спать');
+            handlers.stairsDown = () => {
+              handlers.stairsDown = null;
+              setZone('home2', 599.5, 5.2, Math.PI/2);
+              setObjective('Лечь спать (кровать)');
+              handlers.bed = () => {
+                handlers.bed = null;
+                runDialog([
+                  say('Артём (мысли)', 'Она сказала «до завтра». ДО ЗАВТРА. Ладно, спокоен. Абсолютно спокоен. ...Не спокоен.'),
+                  { do: gotoSleep },
+                ]);
+              };
+            };
+          });
+        } },
+    ]);
+  }
+};
+
+/* ---------- ДЕНЬ 2 ---------- */
+dayScripts[2] = function() {
+  updateHUD();
+  setZone('home2', 599.5, 5.2, Math.PI);
+  setObjective('Вторник. Одеться и выйти в школу (шкаф → лестница → дверь)');
+  handlers.wardrobe = () => {
+    handlers.wardrobe = null;
+    toast('Готов!');
+    handlers.stairsUp = () => {
+      handlers.stairsUp = null;
+      setZone('home', 493, 5, -Math.PI/2);
+      handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Дойти до школы. Сегодня вдруг захотелось прийти пораньше', 65, -27, 'city'); };
+    };
+  };
+
+  handlers.desk = () => {
+    if (state.flags.test2) return;
+    state.flags.test2 = true; handlers.desk = null;
+    placeNPC('teacher','school',706,-4.5,Math.PI); placeNPC('alisa','school',697,-1,Math.PI);
+    state.time = Math.max(state.time, 9*60);
+    runDialog([
+      say('Мария Ивановна', 'Внезапная контрольная! Учебники закрыли. Тетради открыли. Начали!'),
+      say('Артём (мысли)', 'Контрольная?! Ну хоть не у доски...'),
+      say('Алиса (шёпотом)', 'Псс... Артём. Я эту тему пропустила, когда переезжала. Может... поможешь? Просто на секундочку?'),
+      ch([
+        { t: 'Подвинуть тетрадь и рисковать', do: () => { hearts(1); toast('Вы успели. Мария Ивановна ничего не заметила... почти.'); state.flags.cheated = true; } },
+        { t: 'Шёпотом объяснить ей тему, не показывая тетрадь', do: () => { hearts(2); toast('Ты объяснил так понятно, что она всё решила сама.'); state.flags.tutor = true; } },
+        { t: '«Извини, не могу. Это нечестно.»', do: () => {}, then: [ say('Алиса', '...Понятно. Ладно.'), say('Артём (мысли)', 'Я поступил правильно. Так ведь? Так?') ] },
+      ]),
+      say('Макс (из-за спины)', 'Псс, эй, двое гении, я тут вообще всё забыл, спасите—'),
+      { do: () => {
+          state.time = Math.max(state.time, 13*60);
+          hideNPC('teacher'); hideNPC('alisa');
+          setObjective('Уроки кончились. Выйди из школы', 65, -24, 'city');
+          addTrigger('city', 65, -24, 4, () => {
+            placeNPC('max','city',62,-22,-0.5); placeNPC('alisa','city',67,-21,0.6);
+            runDialog([
+              say('Макс', 'Так, план такой: кафе «У Макса» — не у меня, просто названо в честь великого человека. Все трое — идём.'),
+              say('Алиса', 'Я за! Я, между прочим, голодная с обеда.'),
+              { do: () => { hideNPC('max'); hideNPC('alisa'); setObjective('Пойти в кафе (чуть восточнее перекрёстка)', 15, -21, 'city'); } },
+            ]);
+          });
+        } },
+    ]);
+  };
+
+  handlers.cafe = () => {
+    if (!state.flags.test2 || state.flags.inCafe) { toast('Сейчас не время.'); return; }
+    state.flags.inCafe = true; handlers.cafe = null;
+    if (pay(100)) toast('Ты угостил всех. -100₽, но +респект.');
+    else toast('Денег не хватило... Макс молча заплатил за тебя. Запомни это.');
+    runDialog([
+      say('Макс', 'Значит так. Тост! За то, чтобы эта четверть закончилась. И за наш новый состав.'),
+      say('Алиса', '«Состав»... Вы как банда какая-то.'),
+      say('Макс', 'Мы и есть банда. Банда 9-«Б»!'),
+      ch([
+        { t: '«За банду!»', do: () => hearts(1) },
+        { t: 'Спросить Алису, о чём она мечтает', do: () => { hearts(2); state.flags.dream = true; }, then: [
+            say('Алиса', 'Хочу поступить на художественный. В столице. Рисовать город, в котором... в котором хочется остаться.'),
+            say('Артём (мысли)', 'Она сказала это, глядя в чашку. И я почему-то понял, что запомню это на всю жизнь.'),
+          ] },
+      ]),
+      say('Алиса', 'Кстати! Я вам завтра что-то покажу. Кое-что важное. Напомните мне, ладно?'),
+      say('Артём (мысли)', '«Кое-что важное». Вот теперь я весь вечер буду думать, что именно.'),
+      { do: () => {
+          hideNPC('max'); hideNPC('alisa');
+          setObjective('Возвращайся домой и ложись спать. Дом на западе', -40, 20, 'city');
+          addTrigger('city', -40, 20, 2.5, () => {
+            setZone('home', 508, 0, Math.PI);
+            setObjective('Наверх, в кровать');
+            handlers.stairsDown = () => {
+              handlers.stairsDown = null;
+              setZone('home2', 599.5, 5.2, Math.PI/2);
+              handlers.bed = () => { handlers.bed = null; gotoSleep(); };
+            };
+          });
+        } },
+    ]);
+  };
+
+  handlers.bed = () => { toast('Ещё есть дела: Макс звал всех в кафе после уроков!'); };
+};
+
+/* ---------- ДЕНЬ 3 ---------- */
+dayScripts[3] = function() {
+  updateHUD();
+  state.flags.rain = true; state.umbrella = true;
+  window._umbrella.visible = true;
+  setZone('home2', 599.5, 5.2, Math.PI);
+  setObjective('Среда. За окном дождь. Мама крикнула из прихожей: «Зонт взял?!» Взял. Одеться и в школу');
+  handlers.wardrobe = () => {
+    handlers.wardrobe = null;
+    toast('Готов! Зонт с тобой ☂');
+    handlers.stairsUp = () => {
+      handlers.stairsUp = null;
+      setZone('home', 493, 5, -Math.PI/2);
+      handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Школа. Алиса обещала «кое-что важное»', 65, -27, 'city'); };
+    };
+  };
+
+  handlers.desk = () => {
+    if (state.flags.lesson3) return;
+    state.flags.lesson3 = true;
+    handlers.desk = null;
+    placeNPC('teacher','school',706,-4.5,Math.PI); placeNPC('alisa','school',697,-1,Math.PI);
+    state.time = Math.max(state.time, 13*60+30);
+    runDialog([
+      say('Мария Ивановна', '...и таким образом, корни уравнения — это не страшно. Страшно, когда их два, а у тебя ни одного.'),
+      say('Артём (мысли)', 'Дождь стучит в окно. Урок тянется бесконечно.'),
+      say('Алиса (шёпотом)', 'Псст. Слушай... последний урок всё равно все проспят. Давай сбежим? В аркаду, пока дождь...'),
+      ch([
+        { t: '«Сбежим.» (прогулять с Алисой)', do: () => { state.flags.skip3 = true; hearts(1); toast('Ты впервые в жизни прогулял. Сердце колотится.'); } },
+        { t: '«Не-не, меня мама убьёт. Давай после уроков?»', do: () => { state.flags.skip3 = false; hearts(1); } },
+      ]),
+      say(state.flags.skip3 ? 'Алиса' : 'Алиса (притворно вздыхая)', state.flags.skip3 ? 'А ты смелее, чем я думала. Пошли, пока не заметили!' : 'Ладно, хорошист. Тогда после уроков — и не забудь про обещанное!'),
+      { do: () => {
+          hideNPC('teacher'); hideNPC('alisa');
+          if (state.flags.skip3) {
+            setObjective('Сбежать с Алисой: выйди из школы и беги в аркаду', 32, 13, 'city');
+            addTrigger('city', 65, -24, 4, () => {
+              placeNPC('alisa','city',63,-22,-0.5);
+              runDialog([
+                say('Алиса', 'Так! Первые в жизни бунтари вместе. В аркаду, живо!'),
+                { do: () => walkWith('alisa', 'Бежать в аркаду вместе с Алисой (северо-восточный квартал)', 32, 13, arcade3) },
+              ]);
+            });
+          } else {
+            setObjective('Выйти из школы — Алиса ждёт у ворот', 65, -24, 'city');
+            addTrigger('city', 65, -24, 4, () => {
+              placeNPC('alisa','city',63,-22,-0.5);
+              runDialog([
+                say('Алиса', 'Ну что, отличник. Я, между прочим, тоже осталась. Не хочу, чтобы ты там один скучал на физре.'),
+                say('Артём', 'Ты... осталась? Из-за меня?'),
+                say('Алиса', 'Из-за того, что мне не с кем пойти в аркаду. Из-за тебя, ясное дело.'),
+                { do: () => { hearts(1); arcade3(); } },
+              ]);
+            });
+          }
+        } },
+    ]);
+  };
+
+  function arcade3() {
+    if (pay(60)) toast('Алиса поставила за двоих. -60₽');
+    else toast('Денег не хватило — Алиса поставила за двоих и изобразила «богача»');
+    timingGame('Танцевальный автомат', 3, 14, 55, (hits) => {
+      runDialog([
+        say('Алиса', hits >= 2 ? 'Ты видел?! Мы прошли на «отлично»! Ты вообще откуда такой взялся?' : 'Ну, за первый раз... сойдёт. Я, между прочим, тоже половину мимо.'),
+        say('Артём', 'С соседнего двора. Кажется, я тут надолго.'),
+        say('Алиса', '...Это было почти гладко сказано. Почти.'),
+        { do: () => hearts(2) },
+        say('Алиса', 'Ладно. Обещала — показываю. Только не смейся!'),
+        { do: () => toast('Алиса достаёт потрёпанный скетчбук...') },
+        say('Алиса', 'Это... фонтан. И вот тут, на скамейке — ты. Ну, как я тебя представляла, пока мы ещё не познакомились.'),
+        say('Артём (мысли)', 'Она рисовала меня. ДО того, как мы познакомились.'),
+        ch([
+          { t: '«Это самое красивое, что я видел. Правда.»', do: () => hearts(2) },
+          { t: '«У тебя огромный талант. Ты точно поступишь.»', do: () => hearts(1) },
+          { t: 'Пошутить: «А почему у меня волосы как у ёжика?»', then: [ say('Алиса', 'Потому что ты ёжик! ...Ладно, перерисую.'), { do: () => toast('Она засмеялась. Кажется, сошло.') } ] },
+        ]),
+        say('Алиса', 'Спасибо, что не посмеялся. Я обычно никому не показываю.'),
+        say('Артём (мысли)', 'Под дождём, под одним зонтом, мы молча шли к моему дому. И это молчание было лучше тысячи слов.'),
+        { do: () => { hideNPC('alisa'); evening3(); } },
+      ]);
+    });
+  }
+
+  function evening3() {
+    setObjective('Возвращайся домой', -40, 20, 'city');
+    addTrigger('city', -40, 20, 2.5, () => {
+      setZone('home', 508, 0, Math.PI);
+      setObjective('Наверх, спать');
+      handlers.stairsDown = () => {
+        handlers.stairsDown = null;
+        setZone('home2', 599.5, 5.2, Math.PI/2);
+        handlers.bed = () => {
+          handlers.bed = null;
+          runDialog([
+            say('Мама (по телефону)', 'Артём, школа звонила... Прогул в последнем классе?! Что случилось?'),
+            ch([
+              { t: 'Признаться честно: «Простите. Больше не будет.»', do: () => { state.flags.honest = true; toast('Мама вздохнула. Но спасибо, что честно.'); } },
+              { t: 'Солгать: «Урок отменили, я не знал.»', do: () => { state.flags.lied = true; toast('Мама промолчала. В этой тишине что-то страшнее крика.'); } },
+            ]),
+            say('Артём (мысли)', 'В воскресенье я скажу ей главное. Мне нужна неделя. Осталось четыре дня.'),
+            { do: gotoSleep },
+          ]);
+        };
+      };
+    });
+  }
+
+  handlers.bed = () => { toast('Сначала закончи дела этого дня!'); };
+};
+
+/* ---------- ДЕНЬ 4 ---------- */
+dayScripts[4] = function() {
+  updateHUD();
+  setZone('home2', 599.5, 5.2, Math.PI);
+  setObjective('Четверг. Солнце! Одеться и в школу (шкаф → лестница → дверь)');
+  handlers.wardrobe = () => {
+    handlers.wardrobe = null;
+    toast('Готов!');
+    handlers.stairsUp = () => {
+      handlers.stairsUp = null;
+      setZone('home', 493, 5, -Math.PI/2);
+      handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Школа. Сегодня физра!', 65, -27, 'city'); };
+    };
+  };
+
+  handlers.desk = () => {
+    if (state.flags.pe4) return;
+    state.flags.pe4 = true; handlers.desk = null;
+    placeNPC('dima','school',700,-1.4,0); placeNPC('alisa','school',697,-1,Math.PI);
+    runDialog([
+      say('Дима', 'О-о, смотрите-ка. Слышал, ваш герой вчера в аркаду прогулял. Прогульщик, значит.'),
+      say('Алиса', 'Дима, отвали. Это не твоё дело.'),
+      say('Артём (мысли)', 'Спокойно, Артём. Сейчас физра. Баскетбол. Покажи им.'),
+      { do: () => {
+          hideNPC('dima'); hideNPC('alisa');
+          timingGame('Баскетбол: броски (3 попытки)', 3, 12, 60, (hits) => {
+            const lines = [];
+            if (hits >= 2) {
+              lines.push(say('Артём (мысли)', 'Два из трёх! Площадка загудела.'));
+              lines.push(say('Дима', 'Повезло. Один раз.'));
+              lines.push(say('Макс (с трибуны)', 'ДА, БРО, ДА!!!'));
+            } else {
+              lines.push(say('Артём (мысли)', 'Ну, не Майкл Джордан. Но я старался.'));
+              lines.push(say('Макс', 'Главное — участие, э-э... братан.'));
+            }
+            lines.push(say('Алиса (подходя)', 'Я видела. Ты старался. Мне понравилось.'));
+            lines.push(ch([
+              { t: '«Ради тебя и старался.»', do: () => hearts(2), then: [ say('Алиса', '...Что? Н-ну ладно.') ] },
+              { t: '«Тренируюсь. Хочешь, научу?»', do: () => hearts(1) },
+            ]));
+            lines.push(say('Алиса', 'Слушай... у меня беда. Барсик пропал. Мой кот. С утра вышел и не вернулся. Я уже весь район обошла...'));
+            lines.push(ch([
+              { t: '«Я помогу искать. Прямо сейчас.»', do: () => { hearts(1); startSearch(); } },
+              { t: '«Обидно... но у меня сегодня секция. Сам найдётся.»', do: () => { hearts(-2); toast('Алиса ушла искать одна. Смотреть ей вслед — то ещё удовольствие.'); skipSearch(); } },
+            ]));
+            runDialog(lines);
+          });
+        } },
+    ]);
+  };
+
+  function startSearch() {
+    hideNPC('alisa');
+    placeNPC('alisa','city',-60,-45,0.7);
+    npcs.alisa.follow = true;
+    setObjective('Найти Барсика! Ищите вместе: он на северо-западе парка, среди деревьев', -95, -85, 'city');
+    addTrigger('city', -95, -85, 5, () => {
+      npcs.alisa.follow = false;
+      placeNPC('cat','city',-95,-85,0.5);
+      runDialog([
+        say('Артём', 'БАРСИК! Вот ты где, пёс... то есть кот!'),
+        say('Барсик', 'Мяу. (Недовольно, но узнаёт.)'),
+        say('Алиса (подбегая)', 'Барсик!! Ой... Артём... Спасибо. Серьёзно.'),
+        { do: () => { hearts(3); state.flags.catFound = true; hideNPC('cat'); hideNPC('alisa'); evening4(); } },
+      ]);
+    });
+  }
+  function skipSearch() { evening4(); }
+  function evening4() {
+    setObjective('Вечер. Возвращайся домой', -40, 20, 'city');
+    addTrigger('city', -40, 20, 2.5, () => {
+      setZone('home', 508, 0, Math.PI);
+      handlers.stairsDown = () => {
+        handlers.stairsDown = null;
+        setZone('home2', 599.5, 5.2, Math.PI/2);
+        handlers.bed = () => {
+          handlers.bed = null;
+          runDialog([
+            say('Артём (мысли)', state.flags.catFound ? 'Она обняла Барсика и посмотрела на меня так, что я забыл, как меня зовут.' : 'Я мог помочь. И не помог. Завтра извинюсь. Обязательно.'),
+            { do: gotoSleep },
+          ]);
+        };
+      };
+    });
+  }
+  handlers.bed = () => { toast('Сначала физра (школа) и все дела этого дня!'); };
+};
+
+/* ---------- ДЕНЬ 5 ---------- */
+dayScripts[5] = function() {
+  updateHUD();
+  setZone('home2', 599.5, 5.2, Math.PI);
+  setObjective('Пятница! Завтра школьный фестиваль. Одеться и в школу');
+  handlers.wardrobe = () => {
+    handlers.wardrobe = null;
+    toast('Готов!');
+    handlers.stairsUp = () => {
+      handlers.stairsUp = null;
+      setZone('home', 493, 5, -Math.PI/2);
+      handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Школа. Подготовка к фестивалю', 65, -27, 'city'); };
+    };
+  };
+
+  handlers.desk = () => {
+    if (state.flags.fest5) return;
+    state.flags.fest5 = true; handlers.desk = null;
+    placeNPC('max','school',700,-1.4,0); placeNPC('alisa','school',697,-1,Math.PI);
+    runDialog([
+      say('Макс', 'Так, народ. Класс решил: наш класс делает два стенда. Музыкальный — мой, гениальный. И художественный — для Алисы.'),
+      say('Алиса', 'Мне нужна помощь. Оформить стенд, развесить работы... одна я до завтра не успею.'),
+      say('Макс', 'Артём, выбирай: ко мне на сцену (будет громко и весело) или к ней на стенд (будет тихо и... ну, ты понял).'),
+      ch([
+        { t: 'Помочь Алисе с художественным стендом', do: () => { hearts(2); state.flags.helpedAlisa = true; rooftop5(false); } },
+        { t: 'Помочь Максу со сценой', do: () => { state.flags.helpedMax = true; hearts(1); rooftop5(true); } },
+      ]),
+    ]);
+  };
+
+  function rooftop5(late) {
+    runDialog([
+      late ? say('Артём (мысли)', 'Весь вечер я таскал усилители для Макса. Но мысль была одна: она там, на втором этаже, одна.')
+           : say('Алиса', 'Спасибо за помощь! Пойдём, покажу тебе одно место. Только никому.'),
+      { do: () => toast(late ? 'Ты поднялся на крышу школы...' : 'Вы поднялись на крышу школы...') },
+      say('Алиса', 'Видишь? Весь город. Вон наш парк, вон фонтан... Мой скетчбук отсюда и начался.'),
+      say('Артём', 'Красота...'),
+      late ? say('Алиса', 'Я знала, что ты придёшь. Ты всегда приходишь.')
+           : say('Алиса', 'Макс, кстати, не обиделся? Передай ему, что я благодарна. По-настоящему.'),
+      say('Алиса', 'Артём. Можно серьёзно? Я тут неделю думаю... Завтра на фестивале я хочу тебе кое-что сказать. Или показать. Я ещё сама не решила.'),
+      say('Артём (мысли)', 'Сердце колотится. СКАЖЕТ? ПОКАЖЕТ?'),
+      ch([
+        { t: '«Я тоже хочу тебе кое-что сказать. Но жди. Завтра.»', do: () => { hearts(2); state.flags.almost = true; } },
+        { t: 'Промолчать и просто смотреть на город рядом с ней', do: () => hearts(1), then: [ say('Алиса', '...Спасибо, что просто рядом.') ] },
+      ]),
+      say('Алиса', 'Пора домой. Завтра в 10:00 фестиваль. Не опаздывай!'),
+      { do: () => {
+          hideNPC('alisa');
+          setObjective('Возвращайся домой — завтра большой день', -40, 20, 'city');
+          addTrigger('city', -40, 20, 2.5, () => {
+            setZone('home', 508, 0, Math.PI);
+            handlers.stairsDown = () => {
+              handlers.stairsDown = null;
+              setZone('home2', 599.5, 5.2, Math.PI/2);
+              handlers.bed = () => { handlers.bed = null; gotoSleep(); };
+            };
+          });
+        } },
+    ]);
+  }
+  handlers.bed = () => { toast('Сначала подготовка к фестивалю в школе!'); };
+};
+
+/* ---------- ДЕНЬ 6 (СУББОТА — ФЕСТИВАЛЬ) ---------- */
+function danceDone(hits) {
+  const lines = [];
+  if (hits >= 4) { hearts(2); lines.push(say('Алиса', 'Ты танцуешь... совсем не так плохо, как говоришь. Стой так ещё секунду.')); }
+  else if (hits >= 2) { hearts(1); lines.push(say('Алиса', 'Ха-ха! Ну, на три левых ноги ты уже почти в такт. Всё было хорошо.')); }
+  else lines.push(say('Алиса', 'Ты наступить мне на ногу дважды умудрился в одной песне. Запомню это. Всё, перестань переживать, это смешно.'));
+  lines.push(say('Дима', 'Смотрите-ка. Школа Глома закрыта, а тут — высокий блондин с новой подругой.'));
+  lines.push(say('Алиса', 'Дима, уйди. Ничего тебе не нужно от нас.'));
+  lines.push(ch([
+    { t: '«Дима, остановись. Хорошо?»', do: () => { hearts(1); toast('Ты сдержался. Алиса это заметила.'); } },
+    { t: '«Сначала посмотри ей в глаза, а потом повтори.»', do: () => { hearts(1); state.flags.stoodUp = true; toast('Дима замолчал. Впервые.'); } },
+    { t: '(Промолчать и смотреть в пол)', do: () => { hearts(-1); toast('Алиса смотрит в другую сторону. Тишина между вами всё громче.'); } },
+  ]));
+  lines.push(say('Дима', '...Ладно. Наслаждайтесь вашему медляку.'));
+  lines.push(say('Алиса', 'Спасибо. Мне было... очень хорошо. Никогда не было так на фестивале.'));
+  lines.push(say('Алиса', 'Знаешь, сегодня я поняла: ты мне нравишься. Только не говори ничего. Пока. Хочешь сделать один последний шаг завтра?'));
+  lines.push(say('Артём (мысли)', 'Воскресенье. Всё решится. Если хочешь — купи цветы на палатке, бери слова в голову. Осталось совсем немного.'));
+  lines.push({ do: () => {
+      state.flags.canFlowers = true;
+      toast('Утром палатка с цветами на площади работает для тебя. Букет — не обязательный, но очень важный выбор.');
+      hideNPC('alisa'); hideNPC('max'); hideNPC('dima');
+      setObjective('Домой и спать — завтра всё решится (дом на западе)', -40, 20, 'city');
+      addTrigger('city', -40, 20, 2.5, () => {
+        setZone('home', 508, 0, Math.PI);
+        setObjective('Наверх, в кровать');
+        handlers.stairsDown = () => {
+          handlers.stairsDown = null;
+          setZone('home2', 599.5, 5.2, Math.PI/2);
+          handlers.bed = () => { handlers.bed = null; gotoSleep(); };
+        };
+      });
+    } });
+  runDialog(lines);
+}
+function doDance() { timingGame('Медленный танец с Алисой (5 движений)', 5, 15, 70, danceDone); }
+dayScripts[6] = function() {
+  updateHUD();
+  setZone('home2', 599.5, 5.2, Math.PI);
+  window._umbrella.visible = false;
+  setObjective('Суббота! Фестиваль 9«Б» в школе. Выйди из дома', 65, -27, 'city');
+  handlers.stairsDown = () => {
+    handlers.stairsDown = null;
+    setZone('home', 508, 0, Math.PI);
+    handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); };
+  };
+  addTrigger('city', 65, -27, 6, () => {
+    toast('Фестиваль 9«Б»! Сцена, фонарики, музыка...');
+    placeNPC('alisa', 'city', 66, -31, Math.PI);
+    placeNPC('max', 'city', 68, -30, Math.PI/2);
+    placeNPC('dima', 'city', 69, -33, 0);
+    runDialog([
+      say('Алиса', 'Артём! Ты пришёл! Я думала, ты забудешь. Посмотри, какая красота — мы с Максом всю ночь фонарики вешали.'),
+      say('Макс', 'Гостья и звезда вечера! Артём, у меня для тебя план: сначала кафе, потом аркада, потом вернёмся. Не отпусти её!'),
+      say('Алиса', 'Идём? Мне нравятся фестивали, когда рядом правильный человек.'),
+      { do: () => {
+          walkWith('alisa', 'Пойти в кафе с Алисой (площадь)', 15, -18, () => runDialog([
+            say('Алиса', 'Мне — какао с зефирками. Ой, то есть... мне — как обычно. Смешно, да? За всю школу впервые по-настоящему хорошо.'),
+            { do: () => { hearts(1); walkWith('alisa', 'Пойти с Алисой в аркаду', 32, 13, () => {
+                runDialog([
+                  say('Макс', 'Танцевальный автомат — легенда этой аркады! Держи жетон, брат. Покажи класс!'),
+                  { do: () => doDance() },
+                ]);
+              }); } },
+          ])); } },
+    ]);
+  });
+  handlers.flowers = buyFlowers;
+};
+
+/* ---------- ДЕНЬ 7 (ВОСКРЕСЕНЬЕ — ПРИЗНАНИЕ) ---------- */
+function ending(kind) {
+  dialog = null; $('dialog').style.display = 'none';
+  const titles = {
+    best: 'ЛУЧШИЙ ФИНАЛ — «Всё это время»',
+    good: 'ХОРОШИЙ ФИНАЛ — «Почти»',
+    friend: 'ФИНАЛ — «Только друзья»',
+  };
+  const texts = {
+    best: 'Ты взял её за руку и сказал: «Алиса, я влюбился в тебя в понедельник. С первой минуты». Она смеялась и плакала одновременно. На площади играл фонтан, в твоей руке были розы, а в её глазах — да. Вы встречаетесь. Макс гремел аплодисментами, а Дима отвёл глаза. Тебе показалось, что целая неделя прошла за один вдох.',
+    good: 'Ты всё сказал, но не всё получилось идеально. Алиса мягко улыбнулась: «Дай мне время. Я почти готова ответить тебе тем же». Вы договорились встретиться в парке на выходных. Это не «да». Это ещё не «нет». Но между вами уже есть что-то настоящее.',
+    friend: 'Ты не решился сказать вслух, или она всё поняла раньше тебя. «Артём, ты мой лучший друг. Прости, если я ошибалась, надеюсь, я не ранила тебя». Вы пошли в кафе всем классом. Ты смотрел, как она смеётся, и впервые не болело. Почти.',
+  };
+  const honest = state.flags.honest ? 'честный' : (state.flags.lied ? 'с выдумкой' : 'обычный');
+  $('storyCard').innerHTML = '<b>' + titles[kind] + '</b><br><br>' + texts[kind] +
+    '<br><br><i>Сердца: ' + state.hearts + '/10 · Деньги: ' + state.money + '₽ · Розы: ' + (state.flags.boughtFlowers ? 'да 🌹' : 'нет') + ' · Мама: ' + honest + '</i>' +
+    '<br><br><i>Спасибо за игру! Дом, школа, парк, кафе, аркада и фонтан остаются в Заречье навсегда.</i>';
+  $('h2').style.display = 'none';
+  $('menuBtns').style.display = 'none';
+  $('controls').style.display = 'none';
+  $('storyCard').style.display = 'block';
+  $('screen').style.display = 'flex';
+  localStorage.removeItem('schoolLoveSave');
+}
+dayScripts[7] = function() {
+  updateHUD();
+  setZone('home2', 599.5, 5.2, Math.PI);
+  setObjective('Воскресенье. Свободное утро (кафе, палатка с цветами). К 18:00 — фонтан в парке.');
+  handlers.stairsDown = () => {
+    handlers.stairsDown = null;
+    setZone('home', 508, 0, Math.PI);
+    handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); };
+  };
+  placeNPC('cat', 'city', -60, -45, 0);
+  handlers.flowers = buyFlowers;
+  handlers.cafe = () => {
+    handlers.cafe = null;
+    runDialog([
+      say('Бариста', 'Доброе утро! У нас сегодня свежие круассаны. Что будешь?'),
+      ch([
+        { t: 'Круассан и латте (150₽)', do: () => { if (pay(150)) { hearts(1); toast('За завтраком ты успел выучить признание наизусть.'); state.time = Math.max(state.time, 12*60); } else toast('Денег не хватает...'); } },
+        { t: 'Просто чай (50₽)', do: () => { if (pay(50)) { toast('Горячий чай успокаивает сердце.'); state.time = Math.max(state.time, 11*60); } else toast('Денег нет...'); } },
+      ]),
+      { do: () => { state.time = Math.max(state.time, 15*60); toast('Ты провёл в кафе пару часов. Пора готовиться.'); } },
+    ]);
+  };
+  addTrigger('city', -80, -56, 6, () => {
+    if (state.time < 17*60 + 50) { toast('Ещё рано. Договорились к 18:00. Может, позавтракать в кафе?'); return; }
+    finale();
+  });
+  function finale() {
+    state.over = true; clearTriggers();
+    placeNPC('alisa', 'city', -80, -57, 0);
+    setObjective('Признание...');
+    const best = state.hearts >= 8;
+    let good = state.hearts >= 5;
+    const flower = state.flags.boughtFlowers;
+    if (!good && flower && state.hearts >= 4) good = true;
+    runDialog([
+      { do: () => { if (flower) toast('🌹 Розы в твоих руках. Момент настал.'); } },
+      say('', 'Восемнадцать ноль-ноль. Вечерний парк, фонари, фонтан. Ты ждёшь у воды.'),
+      say('Алиса', 'Ты пришёл раньше меня! Всегда так. Знаешь, за эту неделю я... многое поняла.'),
+      say('Алиса', 'Но сначала — скажи мне. Всё, что хотел. В четверг в парке ты не договорил. Я жду.'),
+      { do: () => {
+          const tail = [];
+          if (best) tail.push(say('Алиса', 'Артём... я думала, ты никогда не решишься. Да. Да-да-да. Слышишь? Да.'));
+          else if (good) tail.push(say('Алиса', 'Артём, я не готова ответить прямо сейчас. Но я чувствую то же самое. Просто дай мне немного времени. Договорились?'));
+          else tail.push(say('Алиса', 'Артём... ты замечательный. Правда. Но я видела тебя как друга. Прости, если ошиблась и подала надежду.'));
+          if (flower) tail.push(say('Алиса', 'И розы... ты держал их все это время?! Ты самый милый человек в этом городе.'));
+          tail.push(say('', best ? 'Ты взял её за руку.' : 'Наступила долгая пауза.'));
+          tail.push(say('', 'Иногда самое сложное — сказать вслух. Ты это сделал.'));
+          tail.push({ do: () => setTimeout(() => ending(best ? 'best' : (good ? 'good' : 'friend')), 1800) });
+          runDialog(tail);
+        } },
+    ]);
+  }
+};
+
+/* ============================ HUD / НЕБО / ЦИКЛ ============================ */
+function updateHUD() {
+  $('dayLabel').textContent = DAYS[state.day - 1] || 'Воскресенье';
+  const h = Math.floor(state.time / 60), m = Math.floor(state.time % 60);
+  $('timeLabel').textContent = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  $('moneyLabel').textContent = state.money;
+  $('hearts').textContent = '❤'.repeat(state.hearts) + '♡'.repeat(Math.max(0, 10 - state.hearts));
+}
+function skyUpdate() {
+  const t = state.time;
+  const dayC = new THREE.Color(0x9ecbff), duskC = new THREE.Color(0xf2a366), nightC = new THREE.Color(0x0a1030), dawnC = new THREE.Color(0xf7c59f);
+  let sky;
+  if (t >= 21*60 || t < 5*60) sky = nightC;
+  else if (t < 7*60) sky = nightC.clone().lerp(dawnC, (t - 5*60)/(2*60));
+  else if (t < 9*60) sky = dawnC.clone().lerp(dayC, (t - 7*60)/(2*60));
+  else if (t < 18*60) sky = dayC;
+  else if (t < 20*60) sky = dayC.clone().lerp(duskC, (t - 18*60)/(2*60));
+  else sky = duskC.clone().lerp(nightC, (t - 20*60)/(60));
+  if (state.flags.rain) sky.lerp(new THREE.Color(0x5b6b85), 0.55);
+  scene.background = sky;
+  scene.fog.color = sky;
+  const ang = ((t - 6*60) / (24*60 - 6*60)) * Math.PI;
+  sun.position.set(80 * Math.cos(ang), 100 * Math.max(0.15, Math.sin(ang)), 40);
+  sun.intensity = (t >= 6*60 && t < 21*60) ? 1.3 : 0.25;
+  hemi.intensity = (t >= 6*60 && t < 21*60) ? 0.9 : 0.25;
+  const night = (t >= 21*60 || t < 5*60);
+  scene.traverse(o => { if (o.userData && o.userData.lamp) o.intensity = night ? 1.2 : 0; });
+}
+const clock = new THREE.Clock();
+function updateCamera(dt) {
+  const cx = player.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist;
+  const cz = player.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
+  const cy = player.position.y + 2.4 + Math.sin(camPitch) * camDist;
+  camera.position.lerp(new THREE.Vector3(cx, cy, cz), dt === 0 ? 1 : 0.15);
+  camera.lookAt(player.position.x, player.position.y + 1.6, player.position.z);
+}
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (state.started && !state.over) {
+    if (minigame) {
+      minigame.pos += minigame.dir * minigame.speed * dt;
+      if (minigame.pos > 95) { minigame.pos = 95; minigame.dir = -1; }
+      if (minigame.pos < 5) { minigame.pos = 5; minigame.dir = 1; }
+      $('mgMark').style.left = minigame.pos + '%';
+    }
+    if (!dialog && !minigame) {
+      state.time += state.sitting ? 600 * dt : 60 * dt;
+      if (state.time >= 23*60 + 50) { state.time = 23*60 + 50; toast('Уже поздно. Пора домой, спать!'); }
+    }
+    let mx = 0, mz = 0;
+    if (!dialog && !minigame && !state.sitting) {
+      if (keys['KeyW'] || keys['ArrowUp']) mz -= 1;
+      if (keys['KeyS'] || keys['ArrowDown']) mz += 1;
+      if (keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
+      if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
+      if (Math.abs(joy.x) > 0.25 || Math.abs(joy.y) > 0.25) { mx += joy.x; mz += joy.y; }
+      if (mx || mz) {
+        const sp = ((keys['ShiftLeft'] || keys['ShiftRight'] || isTouch && (Math.hypot(mx, mz) > 0.85)) ? 9 : 4.5) * dt;
+        const a = camYaw + Math.PI;
+        const dx = (Math.cos(a) * mz + Math.sin(a) * -mx) * sp;
+        const dz = (Math.sin(a) * mz + Math.cos(a) * mx) * sp;
+        const cols = colliders[state.zone];
+        let nx = player.position.x + dx;
+        for (const c of cols) {
+          if (Math.abs(nx - c.x) < c.hx + 0.45 && Math.abs(player.position.z - c.z) < c.hz + 0.45) {
+            nx = c.x + Math.sign(nx - c.x) * (c.hx + 0.45);
+          }
+        }
+        player.position.x = nx;
+        let nz = player.position.z + dz;
+        for (const c of cols) {
+          if (Math.abs(player.position.x - c.x) < c.hx + 0.45 && Math.abs(nz - c.z) < c.hz + 0.45) {
+            nz = c.z + Math.sign(nz - c.z) * (c.hz + 0.45);
+          }
+        }
+        player.position.z = nz;
+        player.rotation.y = Math.atan2(dx, dz);
+        const legs = player.userData.legs;
+        if (legs) { legs[0].rotation.x = Math.sin(clock.elapsedTime * 8) * 0.7; legs[1].rotation.x = -Math.sin(clock.elapsedTime * 8) * 0.7; }
+        player.position.y = Math.abs(Math.sin(clock.elapsedTime * 8)) * 0.06;
+      } else {
+        const legs = player.userData.legs;
+        if (legs) { legs[0].rotation.x *= 0.8; legs[1].rotation.x *= 0.8; }
+      }
+    }
+    Object.values(npcs).forEach(n => {
+      if (!n.mesh.visible) return;
+      if (n.follow) {
+        const dx = player.position.x - n.mesh.position.x;
+        const dz = player.position.z - n.mesh.position.z;
+        const d = Math.hypot(dx, dz);
+        if (d > 2.2) {
+          const sp = 6.5 * dt;
+          n.mesh.position.x += dx / d * sp;
+          n.mesh.position.z += dz / d * sp;
+          n.mesh.rotation.y = Math.atan2(dx, dz);
+          const legs = n.mesh.userData.legs;
+          if (legs) { legs[0].rotation.x = Math.sin(clock.elapsedTime * 9) * 0.7; legs[1].rotation.x = -Math.sin(clock.elapsedTime * 9) * 0.7; }
+        }
+      } else {
+        const legs = n.mesh.userData.legs;
+        if (legs) { legs[0].rotation.x *= 0.85; legs[1].rotation.x *= 0.85; }
+        n.mesh.position.y = Math.abs(Math.sin(clock.elapsedTime * 2 + n.mesh.position.x)) * 0.02;
+      }
+    });
+    if (window._rain.visible) {
+      const pos = window._rain.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        let y = pos.getY(i) - dt * 35;
+        if (y < 0) y = 40;
+        pos.setY(i, y);
+      }
+      pos.needsUpdate = true;
+    }
+    window._fountain.material.opacity = 0.5 + Math.sin(clock.elapsedTime * 3) * 0.2;
+    if (window._umbrella.visible) window._umbrella.rotation.y += dt * 0.5;
+    for (const t of triggers) {
+      if (t.fired || state.zone !== t.zone) continue;
+      if (Math.hypot(player.position.x - t.x, player.position.z - t.z) < t.r) {
+        if (t.once) t.fired = true;
+        t.fn();
+      }
+    }
+    currentInter = null;
+    let bestD = 2.2;
+    for (const it of interactables) {
+      if (it.zone !== state.zone) continue;
+      const d = Math.hypot(player.position.x - it.x, player.position.z - it.z);
+      if (d < it.r + 0.6 && d < bestD) { bestD = d; currentInter = it; }
+    }
+    if (currentInter) {
+      const h = handlers[currentInter.id];
+      $('prompt').style.display = 'block';
+      $('prompt').textContent = (state.sitting ? 'Встать (E)' : labelOf(currentInter) + ' (E)') + (h ? '' : ' — недоступно сейчас');
+    } else $('prompt').style.display = 'none';
+    if (objective) {
+      if (objective.x === null || objective.zone !== state.zone) { beacon.visible = false; $('dist').textContent = ''; }
+      else {
+        beacon.visible = true;
+        beacon.position.set(objective.x, 15, objective.z);
+        const d = Math.hypot(player.position.x - objective.x, player.position.z - objective.z);
+        $('dist').textContent = d > 3 ? ' · ' + Math.round(d) + ' м' : '';
+      }
+    }
+  }
+  skyUpdate(); updateHUD(); updateCamera(dt);
+  renderer.render(scene, camera);
+}
+
+/* ============================ МЕНЮ ============================ */
+$('btnStart').onclick = () => {
+  localStorage.removeItem('schoolLoveSave');
+  $('screen').style.display = 'none';
+  startNew();
+};
+$('btnContinue').onclick = () => {
+  const s = JSON.parse(localStorage.getItem('schoolLoveSave'));
+  state.day = s.day; state.hearts = s.hearts; state.money = s.money; state.flags = s.flags || {};
+  $('screen').style.display = 'none';
+  state.started = true;
+  dayScripts[state.day]();
+};
+if (hasSave()) $('btnContinue').style.display = 'inline-block';
+
+function startNew() {
+  state.day = 1; state.time = 7*60; state.money = 500; state.hearts = 1;
+  state.flags = {}; state.started = true; state.over = false;
+  state.sitting = false; state.umbrella = false;
+  runDialog([
+    say('', 'Город Заречье. Теплое лето почти кончилось, до четвёртой четверти — неделя.'),
+    say('Артём (мысли)', 'Меня зовут Артём. Мне 15. И с прошлого месяца я живу в одном городе с Алисой.'),
+    say('Артём (мысли)', 'Это глупо звучит. Мы в одном классе. Просто раньше я жил у бабушки, в другом районе. А теперь — рядом.'),
+    say('Артём (мысли)', 'У меня есть неделя. Неделя до фестиваля, неделя до признания. Или ещё одна неделя тишины на весь год.'),
+    say('Мама', 'Артём! Хватит витать в облаках. В школу не опаздывай!'),
+    { do: () => dayScripts[1]() },
+  ]);
+}
+
+updateHUD();
+animate();
+</script>
+</body>
+</html>
