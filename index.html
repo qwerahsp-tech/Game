@@ -47,6 +47,9 @@
   #joyKnob { position:absolute; left:41px; top:41px; width:42px; height:42px; border-radius:50%; background:rgba(255,255,255,.38); box-shadow:0 2px 8px rgba(0,0,0,.5); }
   #btnAct { display:none; position:absolute; right:30px; bottom:44px; width:78px; height:78px; border-radius:50%; background:rgba(255,255,255,.12); border:2px solid rgba(255,255,255,.4); color:#fff; font-size:15px; font-weight:700; font-family:inherit; pointer-events:auto; touch-action:manipulation; text-shadow:0 1px 3px #000; }
   #btnAct:active { background:rgba(255,215,95,.35); }
+  #btnAct.pulse { border-color:#ffd75f; background:rgba(255,215,95,.3); animation:actpulse 1s infinite; }
+  @keyframes actpulse { 50% { transform:scale(1.12); } }
+  body.touch #prompt { pointer-events:auto; bottom:170px; }
   #btnAct span { display:block; font-size:24px; }
   canvas { touch-action:none; }
   body.touch #dialog { bottom:120px; }
@@ -616,6 +619,7 @@ if (isTouch) {
     tryInteract();
   };
   $('btnAct').addEventListener('click', act);
+  $('prompt').addEventListener('click', act);
   $('minigame').addEventListener('pointerdown', e => { e.preventDefault(); mgPress(); });
   $('dialog').addEventListener('click', e => {
     if (e.target.classList && e.target.classList.contains('chbtn')) return;
@@ -714,23 +718,23 @@ dayScripts[1] = function() {
   state.started = true;
   setZone('home2', 599.5, 5.2, Math.PI);
   updateHUD();
-  setObjective('Понедельник. Проснуться! (кровать)');
+  setObjective('Понедельник. Подойди к кровати и «проснись»', 596, 4.9, 'home2');
   handlers.bed = () => {
     handlers.bed = null;
     runDialog([
       say('Мама (за дверью)', 'Артём! Вставай, ты опять проспишь первый урок!'),
       say('Артём', 'Уже встаю-встаю...'),
       say('Артём (мысли)', 'Сентябрь. Второй год в школе №7. И... та новенькая. Алиса. Перевелась две недели назад, а я так и не сказал ей ни слова.'),
-      { do: () => setObjective('Одеться (шкаф)') }
+      { do: () => setObjective('Одеться (шкаф)', 596, 1.6, 'home2') }
     ]);
     handlers.wardrobe = () => {
       handlers.wardrobe = null;
       toast('Ты переоделся. Выглядишь прилично!');
-      setObjective('Спуститься вниз по лестнице');
+      setObjective('Спуститься вниз по лестнице', 596, 5.4, 'home2');
       handlers.stairsUp = () => {
         handlers.stairsUp = null;
         setZone('home', 493, 5, -Math.PI/2);
-        setObjective('Позавтракать: прочитать записку на кухне');
+        setObjective('Позавтракать: прочитать записку на кухне', 500, 3.6, 'home');
         handlers.note = () => {
           handlers.note = null;
           runDialog([
@@ -754,7 +758,7 @@ dayScripts[1] = function() {
                     ]),
                     say('Артём (мысли)', 'Ладно. Сегодня. Сегодня точно что-нибудь скажу.'),
                     { do: () => {
-                        setObjective('Зайти в школу и сесть за парту');
+                        setObjective('Зайти в школу и сесть за парту', 694, 2.1, 'school');
                         placeNPC('teacher','school',706,-4.5,Math.PI);
                         placeNPC('alisa','school',697,-1,Math.PI);
                         handlers.schoolDoor = () => { handlers.schoolDoor = null; setZone('school', 691, 0.5, -Math.PI/2); };
@@ -824,11 +828,11 @@ dayScripts[1] = function() {
           setObjective('Вернись домой и ложись спать. Дом — на западе, дверь с южной стороны', -40, 20, 'city');
           addTrigger('city', -40, 20, 2.5, () => {
             setZone('home', 508, 0, Math.PI);
-            setObjective('Поднимись в свою комнату и ложись спать');
+            setObjective('Поднимись в свою комнату и ложись спать', 596, 4.9, 'home2');
             handlers.stairsDown = () => {
               handlers.stairsDown = null;
               setZone('home2', 599.5, 5.2, Math.PI/2);
-              setObjective('Лечь спать (кровать)');
+              setObjective('Лечь спать (кровать)', 596, 4.9, 'home2');
               handlers.bed = () => {
                 handlers.bed = null;
                 runDialog([
@@ -847,7 +851,7 @@ dayScripts[1] = function() {
 dayScripts[2] = function() {
   updateHUD();
   setZone('home2', 599.5, 5.2, Math.PI);
-  setObjective('Вторник. Одеться и выйти в школу (шкаф → лестница → дверь)');
+  setObjective('Вторник. Одеться и выйти в школу (шкаф → лестница → дверь)', 596, 1.6, 'home2');
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов!');
@@ -912,7 +916,7 @@ dayScripts[2] = function() {
           setObjective('Возвращайся домой и ложись спать. Дом на западе', -40, 20, 'city');
           addTrigger('city', -40, 20, 2.5, () => {
             setZone('home', 508, 0, Math.PI);
-            setObjective('Наверх, в кровать');
+            setObjective('Наверх, в кровать', 596, 4.9, 'home2');
             handlers.stairsDown = () => {
               handlers.stairsDown = null;
               setZone('home2', 599.5, 5.2, Math.PI/2);
@@ -932,7 +936,7 @@ dayScripts[3] = function() {
   state.flags.rain = true; state.umbrella = true;
   window._umbrella.visible = true;
   setZone('home2', 599.5, 5.2, Math.PI);
-  setObjective('Среда. За окном дождь. Мама крикнула из прихожей: «Зонт взял?!» Взял. Одеться и в школу');
+  setObjective('Среда. За окном дождь. Одеться и в школу (шкаф → лестница → дверь)', 596, 1.6, 'home2');
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов! Зонт с тобой ☂');
@@ -1014,7 +1018,7 @@ dayScripts[3] = function() {
     setObjective('Возвращайся домой', -40, 20, 'city');
     addTrigger('city', -40, 20, 2.5, () => {
       setZone('home', 508, 0, Math.PI);
-      setObjective('Наверх, спать');
+      setObjective('Наверх, спать', 596, 4.9, 'home2');
       handlers.stairsDown = () => {
         handlers.stairsDown = null;
         setZone('home2', 599.5, 5.2, Math.PI/2);
@@ -1041,7 +1045,7 @@ dayScripts[3] = function() {
 dayScripts[4] = function() {
   updateHUD();
   setZone('home2', 599.5, 5.2, Math.PI);
-  setObjective('Четверг. Солнце! Одеться и в школу (шкаф → лестница → дверь)');
+  setObjective('Четверг. Солнце! Одеться и в школу (шкаф → лестница → дверь)', 596, 1.6, 'home2');
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов!');
@@ -1129,7 +1133,7 @@ dayScripts[4] = function() {
 dayScripts[5] = function() {
   updateHUD();
   setZone('home2', 599.5, 5.2, Math.PI);
-  setObjective('Пятница! Завтра школьный фестиваль. Одеться и в школу');
+  setObjective('Пятница! Завтра школьный фестиваль. Одеться и в школу', 596, 1.6, 'home2');
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов!');
@@ -1227,7 +1231,7 @@ dayScripts[6] = function() {
   updateHUD();
   setZone('home2', 599.5, 5.2, Math.PI);
   window._umbrella.visible = false;
-  setObjective('Суббота! Фестиваль 9«Б» в школе. Выйди из дома', 65, -27, 'city');
+  setObjective('Суббота! Фестиваль 9«Б». Спустись и выйди из дома', 596, 5.4, 'home2');
   handlers.stairsDown = () => {
     handlers.stairsDown = null;
     setZone('home', 508, 0, Math.PI);
@@ -1284,7 +1288,7 @@ function ending(kind) {
 dayScripts[7] = function() {
   updateHUD();
   setZone('home2', 599.5, 5.2, Math.PI);
-  setObjective('Воскресенье. Свободное утро (кафе, палатка с цветами). К 18:00 — фонтан в парке.');
+  setObjective('Воскресенье. Свободное утро (кафе, палатка с цветами). К 18:00 — фонтан в парке.', 596, 5.4, 'home2');
   handlers.stairsDown = () => {
     handlers.stairsDown = null;
     setZone('home', 508, 0, Math.PI);
@@ -1468,9 +1472,11 @@ function animate() {
     }
     if (currentInter) {
       const h = handlers[currentInter.id];
+      const hint = isTouch ? ' — жми ✋' : ' (E)';
       $('prompt').style.display = 'block';
-      $('prompt').textContent = (state.sitting ? 'Встать (E)' : labelOf(currentInter) + ' (E)') + (h ? '' : ' — недоступно сейчас');
+      $('prompt').textContent = (state.sitting ? 'Встать' + hint : labelOf(currentInter) + hint) + (h ? '' : ' — недоступно сейчас');
     } else $('prompt').style.display = 'none';
+    if (isTouch) $('btnAct').classList.toggle('pulse', !!currentInter && !dialog && !minigame);
     if (objective) {
       if (objective.x === null || objective.zone !== state.zone) { beacon.visible = false; $('dist').textContent = ''; }
       else {
@@ -1510,6 +1516,7 @@ function startNew() {
     say('Артём (мысли)', 'Это глупо звучит. Мы в одном классе. Просто раньше я жил у бабушки, в другом районе. А теперь — рядом.'),
     say('Артём (мысли)', 'У меня есть неделя. Неделя до фестиваля, неделя до признания. Или ещё одна неделя тишины на весь год.'),
     say('Мама', 'Артём! Хватит витать в облаках. В школу не опаздывай!'),
+    ...(isTouch ? [ say('', 'Управление: джойстик слева — ходьба, круглая кнопка ✋ справа — действие. Жёлтый столб света подскажет, куда идти.') ] : []),
     { do: () => dayScripts[1]() },
   ]);
 }
