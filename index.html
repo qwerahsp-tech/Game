@@ -760,6 +760,12 @@ function tryInteract() {
   }
   const h = handlers[currentInter.id];
   if (h) h();
+  else if (currentInter.id === 'schoolDoor') setZone('school', 691, 0.5, -Math.PI/2);
+  else if (currentInter.id === 'schoolDoorIn') setZone('city', 65, -21.5, Math.PI);
+  else if (currentInter.id === 'arcade') timingGame('Аркадный автомат «Заречье» (3 движения)', 3, 15, 60, hits => {
+    if (hits >= 2) { state.money += 50; updateHUD(); toast('Джекпот! Ты выбил 50₽ из автомата 🕹'); }
+    else toast('Автомат тебя обыграл. Месть отложена.');
+  });
   else if (currentInter.id === 'fountain') runDialog([ say('', 'Фонтан тихо журчит. Пожалуй, самое романтичное место в Заречье.') ]);
   else toast('Сейчас не время.');
 }
@@ -843,8 +849,8 @@ dayScripts[1] = function() {
       handlers.wardrobe = null;
       toast('Ты переоделся. Выглядишь прилично!');
       setObjective('Спуститься вниз по лестнице', 596, 5.4, 'home2');
-      handlers.stairsUp = () => {
-        handlers.stairsUp = null;
+      handlers.stairsDown = () => {
+        handlers.stairsDown = null;
         setZone('home', 493, 5, -Math.PI/2);
         setObjective('Позавтракать: прочитать записку на кухне', 500, 3.6, 'home');
         handlers.note = () => {
@@ -941,8 +947,8 @@ dayScripts[1] = function() {
           addTrigger('city', -40, 20, 2.5, () => {
             setZone('home', 508, 0, Math.PI);
             setObjective('Поднимись в свою комнату и ложись спать', 596, 4.9, 'home2');
-            handlers.stairsDown = () => {
-              handlers.stairsDown = null;
+            handlers.stairsUp = () => {
+              handlers.stairsUp = null;
               setZone('home2', 599.5, 5.2, Math.PI/2);
               setObjective('Лечь спать (кровать)', 596, 4.9, 'home2');
               handlers.bed = () => {
@@ -967,8 +973,8 @@ dayScripts[2] = function() {
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов!');
-    handlers.stairsUp = () => {
-      handlers.stairsUp = null;
+    handlers.stairsDown = () => {
+      handlers.stairsDown = null;
       setZone('home', 493, 5, -Math.PI/2);
       handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Дойти до школы. Сегодня вдруг захотелось прийти пораньше', 65, -27, 'city'); };
     };
@@ -1029,8 +1035,8 @@ dayScripts[2] = function() {
           addTrigger('city', -40, 20, 2.5, () => {
             setZone('home', 508, 0, Math.PI);
             setObjective('Наверх, в кровать', 596, 4.9, 'home2');
-            handlers.stairsDown = () => {
-              handlers.stairsDown = null;
+            handlers.stairsUp = () => {
+              handlers.stairsUp = null;
               setZone('home2', 599.5, 5.2, Math.PI/2);
               handlers.bed = () => { handlers.bed = null; gotoSleep(); };
             };
@@ -1052,8 +1058,8 @@ dayScripts[3] = function() {
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов! Зонт с тобой ☂');
-    handlers.stairsUp = () => {
-      handlers.stairsUp = null;
+    handlers.stairsDown = () => {
+      handlers.stairsDown = null;
       setZone('home', 493, 5, -Math.PI/2);
       handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Школа. Алиса обещала «кое-что важное»', 65, -27, 'city'); };
     };
@@ -1131,8 +1137,8 @@ dayScripts[3] = function() {
     addTrigger('city', -40, 20, 2.5, () => {
       setZone('home', 508, 0, Math.PI);
       setObjective('Наверх, спать', 596, 4.9, 'home2');
-      handlers.stairsDown = () => {
-        handlers.stairsDown = null;
+      handlers.stairsUp = () => {
+        handlers.stairsUp = null;
         setZone('home2', 599.5, 5.2, Math.PI/2);
         handlers.bed = () => {
           handlers.bed = null;
@@ -1161,8 +1167,8 @@ dayScripts[4] = function() {
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов!');
-    handlers.stairsUp = () => {
-      handlers.stairsUp = null;
+    handlers.stairsDown = () => {
+      handlers.stairsDown = null;
       setZone('home', 493, 5, -Math.PI/2);
       handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Школа. Сегодня физра!', 65, -27, 'city'); };
     };
@@ -1225,8 +1231,8 @@ dayScripts[4] = function() {
     setObjective('Вечер. Возвращайся домой', -40, 20, 'city');
     addTrigger('city', -40, 20, 2.5, () => {
       setZone('home', 508, 0, Math.PI);
-      handlers.stairsDown = () => {
-        handlers.stairsDown = null;
+      handlers.stairsUp = () => {
+        handlers.stairsUp = null;
         setZone('home2', 599.5, 5.2, Math.PI/2);
         handlers.bed = () => {
           handlers.bed = null;
@@ -1249,8 +1255,8 @@ dayScripts[5] = function() {
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов!');
-    handlers.stairsUp = () => {
-      handlers.stairsUp = null;
+    handlers.stairsDown = () => {
+      handlers.stairsDown = null;
       setZone('home', 493, 5, -Math.PI/2);
       handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Школа. Подготовка к фестивалю', 65, -27, 'city'); };
     };
@@ -1292,8 +1298,8 @@ dayScripts[5] = function() {
           setObjective('Возвращайся домой — завтра большой день', -40, 20, 'city');
           addTrigger('city', -40, 20, 2.5, () => {
             setZone('home', 508, 0, Math.PI);
-            handlers.stairsDown = () => {
-              handlers.stairsDown = null;
+            handlers.stairsUp = () => {
+              handlers.stairsUp = null;
               setZone('home2', 599.5, 5.2, Math.PI/2);
               handlers.bed = () => { handlers.bed = null; gotoSleep(); };
             };
@@ -1329,8 +1335,8 @@ function danceDone(hits) {
       addTrigger('city', -40, 20, 2.5, () => {
         setZone('home', 508, 0, Math.PI);
         setObjective('Наверх, в кровать');
-        handlers.stairsDown = () => {
-          handlers.stairsDown = null;
+        handlers.stairsUp = () => {
+          handlers.stairsUp = null;
           setZone('home2', 599.5, 5.2, Math.PI/2);
           handlers.bed = () => { handlers.bed = null; gotoSleep(); };
         };
@@ -1504,7 +1510,7 @@ function animate() {
       $('mgMark').style.left = minigame.pos + '%';
     }
     if (!dialog && !minigame) {
-      state.time += state.sitting ? 600 * dt : 60 * dt;
+      state.time += state.sitting ? 120 * dt : 4 * dt;
       if (state.time >= 23*60 + 50) { state.time = 23*60 + 50; toast('Уже поздно. Пора домой, спать!'); }
     }
     let mx = 0, mz = 0;
