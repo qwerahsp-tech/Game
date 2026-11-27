@@ -383,7 +383,10 @@ const school = makeZone('school');
   box('home2', 604,0.6,-4.5, 2.6,1.2,1.2, mat('#8a6a4a'));
   const poster = textSprite('РОК', '#ffffff', 52, 'rgba(150,40,120,0.8)');
   poster.scale.set(4,1,1); poster.position.set(600,2.2,-5.9); home2.add(poster);
-  box('home2', 599,0.6,5.2, 2,0.5,0.8, mat('#6a8ac9'), false);
+  box('home2', 599,0.04,5.2, 2.4,0.08,1.2, mat('#2b3345'), false);
+  box('home2', 599,0.5,4.55, 2.4,0.09,0.09, mat('#8a6a4a'), false);
+  box('home2', 597.9,0.27,4.55, 0.09,0.55,0.09, mat('#8a6a4a'), false);
+  box('home2', 600.1,0.27,4.55, 0.09,0.55,0.09, mat('#8a6a4a'), false);
 }
 
 /* ---------- ШКОЛА: КЛАСС ---------- */
@@ -531,7 +534,7 @@ function addInter(id, zone, x, z, r, label) { interactables.push({ id, zone, x, 
 addInter('bed','home2', 596,4.9, 2.2,'Лечь спать');
 addInter('wardrobe','home2', 596,1.6, 1.8,'Открыть шкаф');
 addInter('stairsUp','home', 492.5,5.5, 3.4,'Подняться наверх');
-addInter('stairsDown','home2', 596,5.4, 1.8,'Спуститься вниз');
+addInter('stairsDown','home2', 599,5.2, 2.2,'Спуститься вниз');
 addInter('note','home', 500,3.6, 1.8,'Прочитать записку мамы');
 addInter('homeDoor','home', 509.9,0, 1.8,'Выйти на улицу');
 addInter('schoolDoor','city', 65,-30.2, 2.4,'Войти в школу');
@@ -848,7 +851,7 @@ dayScripts[1] = function() {
     handlers.wardrobe = () => {
       handlers.wardrobe = null;
       toast('Ты переоделся. Выглядишь прилично!');
-      setObjective('Спуститься вниз по лестнице', 596, 5.4, 'home2');
+      setObjective('Спуститься вниз по лестнице', 599, 5.2, 'home2');
       handlers.stairsDown = () => {
         handlers.stairsDown = null;
         setZone('home', 493, 5, -Math.PI/2);
@@ -973,9 +976,11 @@ dayScripts[2] = function() {
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов!');
+    setObjective('Спуститься вниз по лестнице', 599, 5.2, 'home2');
     handlers.stairsDown = () => {
       handlers.stairsDown = null;
       setZone('home', 493, 5, -Math.PI/2);
+      setObjective('Выйди из дома — школа на востоке', 509.9, 0, 'home');
       handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Дойти до школы. Сегодня вдруг захотелось прийти пораньше', 65, -27, 'city'); };
     };
   };
@@ -1058,9 +1063,11 @@ dayScripts[3] = function() {
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов! Зонт с тобой ☂');
+    setObjective('Спуститься вниз по лестнице', 599, 5.2, 'home2');
     handlers.stairsDown = () => {
       handlers.stairsDown = null;
       setZone('home', 493, 5, -Math.PI/2);
+      setObjective('Выйди из дома — школа на востоке', 509.9, 0, 'home');
       handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Школа. Алиса обещала «кое-что важное»', 65, -27, 'city'); };
     };
   };
@@ -1167,9 +1174,11 @@ dayScripts[4] = function() {
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов!');
+    setObjective('Спуститься вниз по лестнице', 599, 5.2, 'home2');
     handlers.stairsDown = () => {
       handlers.stairsDown = null;
       setZone('home', 493, 5, -Math.PI/2);
+      setObjective('Выйди из дома — школа на востоке', 509.9, 0, 'home');
       handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Школа. Сегодня физра!', 65, -27, 'city'); };
     };
   };
@@ -1231,6 +1240,7 @@ dayScripts[4] = function() {
     setObjective('Вечер. Возвращайся домой', -40, 20, 'city');
     addTrigger('city', -40, 20, 2.5, () => {
       setZone('home', 508, 0, Math.PI);
+      setObjective('Поднимись в свою комнату и ложись спать', 596, 4.9, 'home2');
       handlers.stairsUp = () => {
         handlers.stairsUp = null;
         setZone('home2', 599.5, 5.2, Math.PI/2);
@@ -1255,9 +1265,11 @@ dayScripts[5] = function() {
   handlers.wardrobe = () => {
     handlers.wardrobe = null;
     toast('Готов!');
+    setObjective('Спуститься вниз по лестнице', 599, 5.2, 'home2');
     handlers.stairsDown = () => {
       handlers.stairsDown = null;
       setZone('home', 493, 5, -Math.PI/2);
+      setObjective('Выйди из дома — школа на востоке', 509.9, 0, 'home');
       handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Школа. Подготовка к фестивалю', 65, -27, 'city'); };
     };
   };
@@ -1298,6 +1310,7 @@ dayScripts[5] = function() {
           setObjective('Возвращайся домой — завтра большой день', -40, 20, 'city');
           addTrigger('city', -40, 20, 2.5, () => {
             setZone('home', 508, 0, Math.PI);
+            setObjective('Поднимись в свою комнату и ложись спать', 596, 4.9, 'home2');
             handlers.stairsUp = () => {
               handlers.stairsUp = null;
               setZone('home2', 599.5, 5.2, Math.PI/2);
@@ -1349,11 +1362,12 @@ dayScripts[6] = function() {
   updateHUD();
   setZone('home2', 599.5, 5.2, Math.PI);
   window._umbrella.visible = false;
-  setObjective('Суббота! Фестиваль 9«Б». Спустись и выйди из дома', 596, 5.4, 'home2');
+  setObjective('Суббота! Фестиваль 9«Б». Спустись и выйди из дома', 599, 5.2, 'home2');
   handlers.stairsDown = () => {
     handlers.stairsDown = null;
     setZone('home', 508, 0, Math.PI);
-    handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); };
+    setObjective('Выйди из дома — фестиваль у школы на востоке', 509.9, 0, 'home');
+    handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('На фестиваль! Проходи к школе — там уже всё началось', 65, -27, 'city'); };
   };
   addTrigger('city', 65, -27, 6, () => {
     toast('Фестиваль 9«Б»! Сцена, фонарики, музыка...');
@@ -1410,7 +1424,8 @@ dayScripts[7] = function() {
   handlers.stairsDown = () => {
     handlers.stairsDown = null;
     setZone('home', 508, 0, Math.PI);
-    handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); };
+    setObjective('Выйди на улицу. Утро свободно: кафе, палатка с цветами', 509.9, 0, 'home');
+    handlers.homeDoor = () => { handlers.homeDoor = null; setZone('city', -40, 17.5, Math.PI); setObjective('Свободное утро: кафе или цветы. К 18:00 — фонтан в парке (юго-запад)', -80, -55, 'city'); };
   };
   placeNPC('cat', 'city', -60, -45, 0);
   handlers.flowers = buyFlowers;
@@ -1425,10 +1440,13 @@ dayScripts[7] = function() {
       { do: () => { state.time = Math.max(state.time, 15*60); toast('Ты провёл в кафе пару часов. Пора готовиться.'); } },
     ]);
   };
+  let finaleDone = false;
   addTrigger('city', -80, -56, 6, () => {
+    if (finaleDone) return;
     if (state.time < 17*60 + 50) { toast('Ещё рано. Договорились к 18:00. Может, позавтракать в кафе?'); return; }
+    finaleDone = true;
     finale();
-  });
+  }, false);
   function finale() {
     state.over = true; clearTriggers();
     placeNPC('alisa', 'city', -80, -57, 0);
@@ -1606,12 +1624,18 @@ function animate() {
       }
     }
     currentInter = null;
-    let bestD = 2.2;
-    for (const it of interactables) {
-      if (it.zone !== state.zone) continue;
-      const d = Math.hypot(player.position.x - it.x, player.position.z - it.z);
-      if (d < it.r + 0.6 && d < bestD) { bestD = d; currentInter = it; }
-    }
+    const pickInter = (onlyOk) => {
+      let bd = 2.2;
+      for (const it of interactables) {
+        if (it.zone !== state.zone) continue;
+        const ok = !!handlers[it.id] || it.id === 'schoolDoor' || it.id === 'schoolDoorIn' || it.id === 'arcade' || it.id === 'fountain' || it.id.startsWith('bench') || it.id === 'sofa';
+        if (onlyOk && !ok) continue;
+        const d = Math.hypot(player.position.x - it.x, player.position.z - it.z);
+        if (d < it.r + 0.6 && d < bd) { bd = d; currentInter = it; }
+      }
+    };
+    pickInter(true);
+    if (!currentInter) pickInter(false);
     if (currentInter) {
       const h = handlers[currentInter.id];
       const hint = isTouch ? ' — жми ✋' : ' (E)';
